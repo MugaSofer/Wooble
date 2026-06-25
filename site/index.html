@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wooble — search Wildbow's serials</title>
+  <link href="/pagefind/pagefind-ui.css" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f1115; --panel: #171a21; --ink: #e8eaed; --muted: #9aa0aa;
+      --accent: #b23b3b; --accent-ink: #ff6b6b;
+      --pagefind-ui-primary: var(--accent-ink);
+      --pagefind-ui-text: var(--ink);
+      --pagefind-ui-background: var(--panel);
+      --pagefind-ui-border: #2a2f3a;
+      --pagefind-ui-tag: #222732;
+      --pagefind-ui-border-radius: 10px;
+      --pagefind-ui-font: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; background: var(--bg); color: var(--ink);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      display: flex; flex-direction: column; align-items: center;
+    }
+    header { text-align: center; margin: 9vh 1rem 1.5rem; }
+    .logo { font-size: clamp(2.8rem, 9vw, 4.5rem); font-weight: 800; letter-spacing: -2px; }
+    .logo span { color: var(--accent-ink); }
+    .tag { color: var(--muted); margin-top: .25rem; font-size: 1.05rem; }
+    main { width: min(680px, 92vw); padding-bottom: 4rem; }
+    footer {
+      color: var(--muted); font-size: .82rem; text-align: center;
+      max-width: 640px; margin: auto 1rem 2rem; line-height: 1.5;
+    }
+    footer a { color: var(--accent-ink); text-decoration: none; }
+    .source-pill {
+      display: inline-block; font-size: .72rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .04em; color: var(--accent-ink); background: #241317;
+      padding: .12rem .5rem; border-radius: 999px; margin-bottom: .3rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">Wo<span>o</span>ble</div>
+    <div class="tag">Search across Wildbow's web serials.</div>
+  </header>
+
+  <main>
+    <div id="search"></div>
+  </main>
+
+  <footer>
+    Wooble is an unofficial fan-made finder. It shows snippets and links you
+    straight to the original chapters — all stories are ©
+    <a href="https://www.parahumans.net/">Wildbow</a> and are not hosted here.
+  </footer>
+
+  <script src="/pagefind/pagefind-ui.js"></script>
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      new PagefindUI({
+        element: '#search',
+        showImages: false,
+        showSubResults: false,
+        excerptLength: 28,
+        pageSize: 8,
+        resetStyles: false,
+        translations: { placeholder: 'Search Worm, Pact, Twig, Pale…' },
+        // Point every result at the canonical chapter on Wildbow's site, and
+        // tag it with which serial it came from.
+        processResult: (result) => {
+          const url = result.meta && result.meta.url;
+          if (url) {
+            result.url = url;
+            for (const sub of result.sub_results || []) sub.url = url;
+          }
+          if (result.meta && result.meta.work) {
+            result.excerpt =
+              '<span class="source-pill">' + result.meta.work + '</span>' + result.excerpt;
+          }
+          return result;
+        },
+      });
+    });
+  </script>
+</body>
+</html>

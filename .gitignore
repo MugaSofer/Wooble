@@ -4,6 +4,7 @@ CLAUDE.md
 node_modules/
 data/raw/
 data/corpus/
+build/
 site/pagefind/
 *.log
 .DS_Store
