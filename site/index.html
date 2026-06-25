@@ -15,27 +15,40 @@
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
       display: flex; flex-direction: column; align-items: center;
     }
-    header { text-align: center; margin: 7vh 1rem 1.25rem; }
+    header { text-align: center; margin: 6vh 1rem 1.25rem; }
     .logo { font-size: clamp(2.8rem, 9vw, 4.5rem); font-weight: 800; letter-spacing: -2px; }
     .logo span { color: var(--accent); }
     .tag { color: var(--muted); margin-top: .25rem; font-size: 1.05rem; }
     main { width: min(720px, 92vw); padding-bottom: 4rem; }
     #q {
       width: 100%; padding: .85rem 1.1rem; font-size: 1.1rem; color: var(--ink);
-      background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
-      outline: none;
+      background: var(--panel); border: 1px solid var(--line); border-radius: 999px; outline: none;
     }
     #q:focus { border-color: var(--accent); }
-    #filters { display: flex; flex-wrap: wrap; gap: .5rem; margin: .9rem .2rem .2rem; }
-    #filters label {
-      display: inline-flex; align-items: center; gap: .35rem; cursor: pointer;
-      font-size: .85rem; color: var(--muted); background: var(--panel);
-      border: 1px solid var(--line); border-radius: 999px; padding: .25rem .7rem;
-      user-select: none;
+    .controls { display: flex; flex-wrap: wrap; gap: 1rem 1.5rem; margin: .9rem .2rem .2rem; font-size: .85rem; color: var(--muted); }
+    .controls > label { display: inline-flex; align-items: center; gap: .4rem; }
+    select, .dd-btn {
+      color: var(--ink); background: var(--panel); border: 1px solid var(--line);
+      border-radius: 8px; padding: .25rem .5rem; font: inherit; font-size: .85rem;
     }
-    #filters label:has(input:checked) { color: var(--ink); border-color: var(--accent); }
-    #filters input { accent-color: var(--accent); }
-    #filters .count { opacity: .55; font-variant-numeric: tabular-nums; }
+    select:focus, .dd-btn:focus { outline: none; border-color: var(--accent); }
+    /* Works multi-select: a select-styled button that opens a checkbox popup. */
+    .dropdown { position: relative; display: inline-block; }
+    .dd-btn { cursor: pointer; }
+    .dd-btn::after { content: "▾"; margin-left: .35rem; opacity: .6; }
+    .dd-btn[aria-expanded="true"] { border-color: var(--accent); }
+    .dd-panel {
+      position: absolute; z-index: 10; top: calc(100% + 5px); left: 0; min-width: 190px;
+      max-height: 300px; overflow: auto; background: var(--panel); border: 1px solid var(--line);
+      border-radius: 10px; padding: .35rem; box-shadow: 0 10px 28px rgba(0, 0, 0, .45);
+    }
+    .dd-panel label {
+      display: flex; align-items: center; gap: .55rem; padding: .32rem .45rem;
+      border-radius: 6px; cursor: pointer; font-size: .88rem; color: var(--ink); user-select: none;
+    }
+    .dd-panel label:hover { background: #1f242e; }
+    .dd-panel input { accent-color: var(--accent); }
+    .dd-panel .count { margin-left: auto; opacity: .5; font-variant-numeric: tabular-nums; }
     #status { color: var(--muted); font-size: .85rem; margin: 1rem .2rem .4rem; min-height: 1.2em; }
     #results { list-style: none; margin: 0; padding: 0; }
     .result { padding: 1rem 0; border-top: 1px solid var(--line); }
@@ -46,10 +59,16 @@
       font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
       color: var(--accent); background: #241317; padding: .12rem .5rem; border-radius: 999px;
     }
+    .r-date { color: var(--muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
     .r-excerpt { color: var(--ink); margin: .4rem 0 .35rem; line-height: 1.55; }
     .r-excerpt mark { background: #4a3b12; color: #ffe8a3; padding: 0 .1em; border-radius: 2px; }
     .r-url { color: var(--muted); font-size: .8rem; text-decoration: none; word-break: break-all; }
     .r-url:hover { color: var(--accent); }
+    #more {
+      display: none; margin: 1.5rem auto 0; padding: .55rem 1.4rem; font: inherit; cursor: pointer;
+      color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
+    }
+    #more:hover { border-color: var(--accent); }
     footer {
       color: var(--muted); font-size: .82rem; text-align: center;
       max-width: 640px; margin: auto 1rem 2rem; line-height: 1.5;
@@ -65,10 +84,30 @@
 
   <main>
     <input id="q" type="search" autocomplete="off" autofocus
-           placeholder="Search Worm, Pact, Twig, Pale…">
-    <div id="filters" aria-label="Filter by work"></div>
+           placeholder="Search Worm, Pact, Twig, Ward, Pale, Claw, Seek…">
+    <div class="controls">
+      <label>Works
+        <span class="dropdown">
+          <button type="button" id="worksBtn" class="dd-btn" aria-haspopup="true" aria-expanded="false">All works</button>
+          <div class="dd-panel" id="worksPanel" hidden></div>
+        </span>
+      </label>
+      <label>Years
+        <select id="yearFrom"></select>
+        <span>–</span>
+        <select id="yearTo"></select>
+      </label>
+      <label>Sort
+        <select id="sort">
+          <option value="">Best match</option>
+          <option value="desc">Newest first</option>
+          <option value="asc">Oldest first</option>
+        </select>
+      </label>
+    </div>
     <div id="status"></div>
     <ol id="results"></ol>
+    <button id="more" type="button">Show more</button>
   </main>
 
   <footer>
@@ -82,75 +121,144 @@
       (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
     const qEl = document.getElementById('q');
-    const filtersEl = document.getElementById('filters');
+    const sortEl = document.getElementById('sort');
+    const yearFromEl = document.getElementById('yearFrom');
+    const yearToEl = document.getElementById('yearTo');
+    const worksBtn = document.getElementById('worksBtn');
+    const worksPanel = document.getElementById('worksPanel');
     const statusEl = document.getElementById('status');
     const resultsEl = document.getElementById('results');
+    const moreBtn = document.getElementById('more');
+
     const selectedWorks = new Set();
-    const MAX_SHOWN = 12;
+    const PAGE = 10;
+    let pending = null;   // current result list awaiting render
+    let shown = 0;
 
     const pagefind = await import('/pagefind/pagefind.js');
-
-    // Build the per-work filter chips from the index's own filter counts.
     const available = await pagefind.filters();
+
+    // Works multi-select popup, from the index's own counts.
     const works = Object.entries(available.work || {}).sort((a, b) => a[0].localeCompare(b[0]));
-    filtersEl.innerHTML = works
+    worksPanel.innerHTML = works
       .map(([name, count]) =>
         `<label><input type="checkbox" value="${esc(name)}">${esc(name)}` +
         `<span class="count">${count}</span></label>`)
       .join('');
 
-    filtersEl.addEventListener('change', (e) => {
+    function updateWorksLabel() {
+      const n = selectedWorks.size;
+      worksBtn.textContent = n === 0 ? 'All works'
+        : n <= 2 ? [...selectedWorks].join(', ')
+        : `${n} works`;
+    }
+    function closeWorks() {
+      worksPanel.hidden = true;
+      worksBtn.setAttribute('aria-expanded', 'false');
+    }
+
+    worksBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const willOpen = worksPanel.hidden;
+      worksPanel.hidden = !willOpen;
+      worksBtn.setAttribute('aria-expanded', String(willOpen));
+    });
+    worksPanel.addEventListener('change', (e) => {
       const cb = e.target;
       if (!(cb instanceof HTMLInputElement)) return;
       cb.checked ? selectedWorks.add(cb.value) : selectedWorks.delete(cb.value);
+      updateWorksLabel();
       run();
     });
+    document.addEventListener('click', (e) => {
+      if (!worksPanel.hidden && !worksPanel.contains(e.target) && e.target !== worksBtn) closeWorks();
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeWorks(); });
+
+    // Year-range selects, spanning every year present in the corpus.
+    const allYears = Object.keys(available.year || {}).sort();
+    const minYear = allYears[0], maxYear = allYears[allYears.length - 1];
+    const yearOpts = allYears.map((y) => `<option value="${y}">${y}</option>`).join('');
+    yearFromEl.innerHTML = yearOpts;
+    yearToEl.innerHTML = yearOpts;
+    yearFromEl.value = minYear;
+    yearToEl.value = maxYear;
+
+    // Build the year-filter list, or null when the full range is selected.
+    function yearRange() {
+      const lo = Math.min(+yearFromEl.value, +yearToEl.value);
+      const hi = Math.max(+yearFromEl.value, +yearToEl.value);
+      if (String(lo) === minYear && String(hi) === maxYear) return null;
+      return allYears.filter((y) => +y >= lo && +y <= hi);
+    }
+
+    function buildOptions() {
+      const filters = {};
+      if (selectedWorks.size) filters.work = { any: [...selectedWorks] };
+      const yr = yearRange();
+      if (yr) filters.year = { any: yr };
+      const opts = {};
+      if (Object.keys(filters).length) opts.filters = filters;
+      if (sortEl.value) opts.sort = { date: sortEl.value };
+      return { opts, refined: Object.keys(filters).length > 0 || !!sortEl.value };
+    }
 
     let timer;
-    qEl.addEventListener('input', () => {
-      clearTimeout(timer);
-      timer = setTimeout(run, 180);
-    });
+    qEl.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(run, 180); });
+    sortEl.addEventListener('change', run);
+    yearFromEl.addEventListener('change', run);
+    yearToEl.addEventListener('change', run);
+    moreBtn.addEventListener('click', renderMore);
 
     async function run() {
       const query = qEl.value.trim();
-      if (!query) {
+      const { opts, refined } = buildOptions();
+      const browsing = !query && refined;
+
+      if (!query && !browsing) {
         resultsEl.innerHTML = '';
         statusEl.textContent = '';
+        moreBtn.style.display = 'none';
         return;
       }
-      statusEl.textContent = 'Searching…';
+      // When browsing with no explicit sort, default to chronological order.
+      if (browsing && !opts.sort) opts.sort = { date: 'asc' };
+      statusEl.textContent = browsing ? 'Loading…' : 'Searching…';
 
-      // Multiple selected works are combined with OR via `any`; with none
-      // selected we omit the filter entirely and search everything.
-      const opts = selectedWorks.size
-        ? { filters: { work: { any: [...selectedWorks] } } }
-        : {};
-      const search = await pagefind.search(query, opts);
+      const search = await pagefind.search(query || null, opts);
+      pending = search.results;
+      shown = 0;
+      resultsEl.innerHTML = '';
 
-      const total = search.results.length;
-      const shown = await Promise.all(
-        search.results.slice(0, MAX_SHOWN).map((r) => r.data()));
+      const total = pending.length;
+      statusEl.textContent = total === 0
+        ? 'No results.'
+        : `${total.toLocaleString()} ${browsing ? 'chapter' : 'result'}${total === 1 ? '' : 's'}`;
+      await renderMore();
+    }
 
-      statusEl.textContent = total
-        ? `${total} result${total === 1 ? '' : 's'}${total > MAX_SHOWN ? ` (showing ${MAX_SHOWN})` : ''}`
-        : 'No results.';
+    async function renderMore() {
+      const slice = pending.slice(shown, shown + PAGE);
+      const data = await Promise.all(slice.map((r) => r.data()));
+      resultsEl.insertAdjacentHTML('beforeend', data.map(card).join(''));
+      shown += slice.length;
+      moreBtn.style.display = shown < pending.length ? 'block' : 'none';
+    }
 
-      resultsEl.innerHTML = shown
-        .map((d) => {
-          const url = (d.meta && d.meta.url) || d.url;
-          const title = (d.meta && d.meta.title) || 'Chapter';
-          const work = (d.meta && d.meta.work) || '';
-          return `<li class="result">
-            <div class="r-head">
-              <a class="r-title" href="${esc(url)}" target="_blank" rel="noopener">${esc(title)}</a>
-              ${work ? `<span class="source-pill">${esc(work)}</span>` : ''}
-            </div>
-            <p class="r-excerpt">${d.excerpt}</p>
-            <a class="r-url" href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a>
-          </li>`;
-        })
-        .join('');
+    function card(d) {
+      const url = (d.meta && d.meta.url) || d.url;
+      const title = (d.meta && d.meta.title) || 'Chapter';
+      const work = (d.meta && d.meta.work) || '';
+      const date = (d.meta && d.meta.date) || '';
+      return `<li class="result">
+        <div class="r-head">
+          <a class="r-title" href="${esc(url)}" target="_blank" rel="noopener">${esc(title)}</a>
+          ${work ? `<span class="source-pill">${esc(work)}</span>` : ''}
+          ${date ? `<span class="r-date">${esc(date)}</span>` : ''}
+        </div>
+        <p class="r-excerpt">${d.excerpt}</p>
+        <a class="r-url" href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a>
+      </li>`;
     }
   </script>
 </body>
