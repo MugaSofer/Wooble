@@ -41,14 +41,21 @@ browser only downloads the fragments a query touches).
 
 ## Sources
 
-| Serial            | Source                          | Via                  | Status |
-| ----------------- | ------------------------------- | -------------------- | ------ |
-| Worm              | `parahumans.wordpress.com`      | WordPress.com API    | ✅      |
-| Pact              | `pactwebserial.wordpress.com`   | WordPress.com API    | ✅      |
-| Twig              | `twigserial.wordpress.com`      | WordPress.com API    | ✅      |
-| Pale              | `palewebserial.wordpress.com`   | WordPress.com API    | ✅      |
-| Ward / Glow-worm  | `parahumans.net`                | (bot-blocked, TODO)  | ⏳      |
-| Word of God (WoG) | Reddit / blog / forum archives  | (phase 2)            | ⏳      |
+| Serial            | Source                          | Via                       | Chapters | Status |
+| ----------------- | ------------------------------- | ------------------------- | -------- | ------ |
+| Worm              | `parahumans.wordpress.com`      | WordPress.com API         | 313      | ✅      |
+| Pact              | `pactwebserial.wordpress.com`   | WordPress.com API         | 154      | ✅      |
+| Twig              | `twigserial.wordpress.com`      | WordPress.com API         | 321      | ✅      |
+| Pale              | `palewebserial.wordpress.com`   | WordPress.com API         | 336      | ✅      |
+| Ward / Glow-worm  | `parahumans.net`                | HTML scrape (TOC → pages) | 280      | ✅      |
+| Claw              | `clawwebserial.blog`            | WordPress.com API         | 40       | ✅      |
+| Seek              | `seekwebserial.wordpress.com`   | WordPress.com API         | 43       | ✅      |
+| Word of God (WoG) | Reddit / blog / forum archives  | (phase 2)                 | —        | ⏳      |
+
+`parahumans.net` blocks its REST API, feeds, and sitemaps (403) for any client, so
+Ward is ingested by scraping the public table-of-contents for chapter links and
+pulling each chapter's `entry-content` (`pipeline/ingest-html.js`). Dates come from
+the `/YYYY/MM/DD/` permalink, keeping Ward consistent with the API-sourced works.
 
 ## Development
 
@@ -68,11 +75,12 @@ are git-ignored — Wooble ships the *index*, not the text.
 
 ## Roadmap
 
-- [x] Polite cached ingestion of the four WordPress-hosted serials
-- [ ] Page-builder + Pagefind + search UI (the actual searching)
-- [ ] Ward / Glow-worm (`parahumans.net`, currently 403s bots)
+- [x] Polite cached ingestion of the WordPress-hosted serials (Worm, Pact, Twig, Pale, Claw, Seek)
+- [x] Page-builder + Pagefind + search UI with per-work filtering and link-out
+- [x] Ward / Glow-worm via HTML scrape (`parahumans.net` blocks its API)
+- [ ] Date controls: sort by date + year-range filter
 - [ ] Word of God: Reddit comments, blog replies, forum archives
-- [ ] GitHub Pages deploy + CI re-index
+- [ ] GitHub Pages / Cloudflare deploy + CI re-index
 
 ## Credits
 

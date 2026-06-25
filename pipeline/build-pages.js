@@ -25,6 +25,7 @@ function pageHtml(rec) {
   // labels never leak into search snippets. Pagefind still captures them.
   // One metadata source per element (an element gets at most one
   // data-pagefind-meta); `url[href]` pulls the canonical link from the attribute.
+  const year = rec.date ? rec.date.slice(0, 4) : '';
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -36,7 +37,8 @@ function pageHtml(rec) {
   <div hidden>
     <span data-pagefind-filter="work" data-pagefind-meta="work">${esc(rec.work)}</span>
     <span data-pagefind-filter="type" data-pagefind-meta="type">Fiction</span>
-    <time data-pagefind-meta="date">${esc(rec.date)}</time>
+    ${year ? `<span data-pagefind-filter="year">${esc(year)}</span>` : ''}
+    <time data-pagefind-meta="date" data-pagefind-sort="date">${esc(rec.date)}</time>
     <a data-pagefind-meta="url[href]" href="${esc(rec.url)}">source</a>
   </div>
   <main data-pagefind-body>

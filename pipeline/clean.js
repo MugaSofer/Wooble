@@ -32,13 +32,24 @@ export function htmlToText(html) {
   return t;
 }
 
-// Lines that are purely inter-chapter navigation, not story text.
-const NAV_LINE = /^(last chapter|next chapter|previous chapter|next|previous|table of contents|first chapter[^\n]*|last[^\n]{0,30}\bnext\b[^\n]*)$/i;
+const NAV_PHRASE = /(last chapter|next chapter|previous chapter|first chapter(?: of [^\n]*?)?|table of contents)/gi;
+
+// A line that is nothing but navigation links once the phrases are removed —
+// catches both "Next Chapter" alone and combined "Previous Chapter Next Chapter".
+function isNavOnly(line) {
+  const t = line.trim();
+  if (!t || !/[a-z]/i.test(t)) return false;
+  return t.replace(NAV_PHRASE, '').replace(/[\s|•·–—-]+/g, '') === '';
+}
 
 export function stripNavigation(text) {
-  return text
-    .split('\n')
-    .filter((line) => !(line && NAV_LINE.test(line.trim())))
+  let lines = text.split('\n');
+  // Cut the trailing Jetpack share/like/related boilerplate that scraped pages
+  // carry inside entry-content (the REST API content doesn't include it).
+  const cut = lines.findIndex((l) => /^(share this:|like this:|related\b)/i.test(l.trim()));
+  if (cut !== -1) lines = lines.slice(0, cut);
+  return lines
+    .filter((line) => !isNavOnly(line))
     .join('\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim();

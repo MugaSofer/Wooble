@@ -4,6 +4,8 @@
     { "slug": "pact", "title": "Pact",  "api": "wpcom",  "site": "pactwebserial.wordpress.com" },
     { "slug": "twig", "title": "Twig",  "api": "wpcom",  "site": "twigserial.wordpress.com" },
     { "slug": "pale", "title": "Pale",  "api": "wpcom",  "site": "palewebserial.wordpress.com" },
-    { "slug": "ward", "title": "Ward",  "api": "wpjson", "site": "www.parahumans.net", "status": "blocked-403" }
+    { "slug": "claw", "title": "Claw",  "api": "wpcom",  "site": "clawwebserial.blog" },
+    { "slug": "seek", "title": "Seek",  "api": "wpcom",  "site": "seekwebserial.wordpress.com" },
+    { "slug": "ward", "title": "Ward",  "api": "html",   "site": "www.parahumans.net", "status": "todo-html-scrape" }
   ]
 }

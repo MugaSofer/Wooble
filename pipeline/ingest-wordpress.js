@@ -64,11 +64,12 @@ async function main() {
   const argv = process.argv.slice(2);
   const limitIdx = argv.indexOf('--limit');
   const limitPages = limitIdx >= 0 ? Number(argv[limitIdx + 1]) : 0;
-  const named = argv.filter((a, i) => !a.startsWith('--') && i !== limitIdx + 1);
+  const limitValIdx = limitIdx >= 0 ? limitIdx + 1 : -1;
+  const named = argv.filter((a, i) => !a.startsWith('--') && i !== limitValIdx);
 
   const { works } = JSON.parse(await readFile('config/works.json', 'utf8'));
   const targets = works.filter(
-    (w) => w.status !== 'blocked-403' && (named.length === 0 || named.includes(w.slug)),
+    (w) => (w.api === 'wpcom' || w.api === 'wpjson') && (named.length === 0 || named.includes(w.slug)),
   );
 
   for (const work of targets) {
