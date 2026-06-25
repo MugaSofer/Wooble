@@ -55,6 +55,8 @@ async function main() {
   const files = (await readdir(CORPUS_DIR)).filter((f) => f.endsWith('.json'));
   let total = 0,
     skipped = 0;
+  const years = new Set();
+  const workCounts = new Map();
 
   for (const file of files) {
     const recs = JSON.parse(await readFile(join(CORPUS_DIR, file), 'utf8'));
@@ -69,10 +71,24 @@ async function main() {
       const slug = rec.id.split(':').slice(1).join(':').replace(/[^a-z0-9-]+/gi, '-');
       await writeFile(join(dir, `${slug}.html`), pageHtml(rec));
       total++;
+      workCounts.set(rec.work, (workCounts.get(rec.work) ?? 0) + 1);
+      if (rec.date) years.add(rec.date.slice(0, 4));
     }
   }
 
+  // Build-time metadata so the UI can populate its filter dropdowns instantly,
+  // without waiting on the Pagefind index to load. Derived from the actual
+  // corpus, so the year range tracks whatever sources are present.
+  const meta = {
+    works: [...workCounts].sort((a, b) => a[0].localeCompare(b[0])),
+    years: [...years].sort(),
+    chapters: total,
+  };
+  await mkdir('site', { recursive: true });
+  await writeFile(join('site', 'meta.json'), JSON.stringify(meta));
+
   console.log(`Wrote ${total} chapter pages to ${BUILD_DIR}/ (skipped ${skipped} short posts).`);
+  console.log(`Wrote site/meta.json: ${meta.works.length} works, years ${meta.years[0]}–${meta.years.at(-1)}.`);
 }
 
 main().catch((e) => {

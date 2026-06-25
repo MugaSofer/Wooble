@@ -9,7 +9,7 @@ Wildbow's own sites.
 
 > [!IMPORTANT]
 > **Wooble does not host or re-publish the stories.** It's a search index that shows a
-> short snippet for context and links *out* to the original chapters — the same way a
+> short snippet for context and links out to the original chapters — the same way a
 > web search engine does. All of Wildbow's writing remains his, and every result drives
 > traffic back to where he publishes it. If Wildbow would prefer this not exist, it comes
 > down — no questions asked (contact: mugasofer@gmail.com).
@@ -52,7 +52,7 @@ browser only downloads the fragments a query touches).
 | Seek              | `seekwebserial.wordpress.com`   | WordPress.com API         | 43       | ✅      |
 | Word of God (WoG) | Reddit / blog / forum archives  | (phase 2)                 | —        | ⏳      |
 
-`parahumans.net` blocks its REST API, feeds, and sitemaps (403) for any client, so
+`parahumans.net` doesn't make its REST API/feeds/sitemaps available like Wordpress (403), so
 Ward is ingested by scraping the public table-of-contents for chapter links and
 pulling each chapter's `entry-content` (`pipeline/ingest-html.js`). Dates come from
 the `/YYYY/MM/DD/` permalink, keeping Ward consistent with the API-sourced works.
@@ -78,9 +78,10 @@ are git-ignored — Wooble ships the *index*, not the text.
 - [x] Polite cached ingestion of the WordPress-hosted serials (Worm, Pact, Twig, Pale, Claw, Seek)
 - [x] Page-builder + Pagefind + search UI with per-work filtering and link-out
 - [x] Ward / Glow-worm via HTML scrape (`parahumans.net` blocks its API)
-- [ ] Date controls: sort by date + year-range filter
+- [x] Date controls: sort by date + year-range filter
+- [x] Live on GitHub Pages (`pnpm run deploy` force-pushes site/ to gh-pages)
 - [ ] Word of God: Reddit comments, blog replies, forum archives
-- [ ] GitHub Pages / Cloudflare deploy + CI re-index
+- [ ] Auto re-index when new chapters drop
 
 ## Credits
 

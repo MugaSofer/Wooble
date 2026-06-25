@@ -10,12 +10,11 @@
     "index": "pagefind --site build --output-path site/pagefind",
     "build": "node pipeline/ingest-wordpress.js && node pipeline/build-pages.js && pagefind --site build --output-path site/pagefind",
     "serve": "node pipeline/serve.js",
-    "deploy": "gh-pages -d site --dotfiles --no-history -m \"Deploy Wooble\"",
+    "deploy": "node pipeline/deploy.js",
     "deploy:cf": "wrangler pages deploy site --project-name wooble"
   },
   "license": "MIT",
   "devDependencies": {
-    "gh-pages": "^6.3.0",
     "pagefind": "^1.5.2",
     "wrangler": "^4.105.0"
   }

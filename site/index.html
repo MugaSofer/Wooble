@@ -135,13 +135,26 @@
     let pending = null;   // current result list awaiting render
     let shown = 0;
 
-    // Relative path so the bundle resolves whether the site is served from a
-    // root (Cloudflare, local) or a subpath (GitHub Pages /Wooble/).
-    const pagefind = await import('./pagefind/pagefind.js');
-    const available = await pagefind.filters();
+    // Pagefind loads in the background; it is only awaited when a search runs.
+    // Relative path so the bundle resolves under a root (Cloudflare, local) or
+    // a subpath (GitHub Pages /Wooble/).
+    const pagefindPromise = import('./pagefind/pagefind.js');
 
-    // Works multi-select popup, from the index's own counts.
-    const works = Object.entries(available.work || {}).sort((a, b) => a[0].localeCompare(b[0]));
+    // Populate the filters instantly from build-time metadata, falling back to
+    // the Pagefind index only if meta.json is missing.
+    let works = [], allYears = [];
+    try {
+      const meta = await (await fetch('./meta.json')).json();
+      works = meta.works || [];
+      allYears = meta.years || [];
+    } catch { /* fall back below */ }
+    if (!works.length || !allYears.length) {
+      const available = await (await pagefindPromise).filters();
+      if (!works.length) works = Object.entries(available.work || {}).sort((a, b) => a[0].localeCompare(b[0]));
+      if (!allYears.length) allYears = Object.keys(available.year || {}).sort();
+    }
+
+    // Works multi-select popup.
     worksPanel.innerHTML = works
       .map(([name, count]) =>
         `<label><input type="checkbox" value="${esc(name)}">${esc(name)}` +
@@ -178,7 +191,6 @@
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeWorks(); });
 
     // Year-range selects, spanning every year present in the corpus.
-    const allYears = Object.keys(available.year || {}).sort();
     const minYear = allYears[0], maxYear = allYears[allYears.length - 1];
     const yearOpts = allYears.map((y) => `<option value="${y}">${y}</option>`).join('');
     yearFromEl.innerHTML = yearOpts;
@@ -227,6 +239,7 @@
       if (browsing && !opts.sort) opts.sort = { date: 'asc' };
       statusEl.textContent = browsing ? 'Loading…' : 'Searching…';
 
+      const pagefind = await pagefindPromise;
       const search = await pagefind.search(query || null, opts);
       pending = search.results;
       shown = 0;
