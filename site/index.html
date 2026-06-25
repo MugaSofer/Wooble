@@ -113,7 +113,7 @@
   <footer>
     Wooble is an unofficial fan-made finder. It shows snippets and links you
     straight to the original chapters — all stories are ©
-    <a href="https://www.parahumans.net/">Wildbow</a> and are not hosted here.
+    <a href="https://www.patreon.com/Wildbow/about">Wildbow</a>.
   </footer>
 
   <script type="module">
@@ -135,7 +135,9 @@
     let pending = null;   // current result list awaiting render
     let shown = 0;
 
-    const pagefind = await import('/pagefind/pagefind.js');
+    // Relative path so the bundle resolves whether the site is served from a
+    // root (Cloudflare, local) or a subpath (GitHub Pages /Wooble/).
+    const pagefind = await import('./pagefind/pagefind.js');
     const available = await pagefind.filters();
 
     // Works multi-select popup, from the index's own counts.
