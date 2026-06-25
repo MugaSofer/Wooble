@@ -59,7 +59,17 @@
       font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
       color: var(--accent); background: #241317; padding: .12rem .5rem; border-radius: 999px;
     }
+    .wog-pill {
+      font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+      color: #7fd1c7; background: #11241f; padding: .12rem .5rem; border-radius: 999px;
+    }
     .r-date { color: var(--muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
+    .r-context {
+      color: var(--muted); font-style: italic; font-size: .92rem; line-height: 1.5;
+      margin: .35rem 0 .2rem; padding-left: .7rem; border-left: 2px solid var(--line);
+    }
+    .r-asker { font-style: normal; font-weight: 600; color: #b89a5e; }
+    .r-answer-by { font-weight: 600; color: #7fd1c7; }
     .r-excerpt { color: var(--ink); margin: .4rem 0 .35rem; line-height: 1.55; }
     .r-excerpt mark { background: #4a3b12; color: #ffe8a3; padding: 0 .1em; border-radius: 2px; }
     .r-url { color: var(--muted); font-size: .8rem; text-decoration: none; word-break: break-all; }
@@ -92,6 +102,9 @@
           <div class="dd-panel" id="worksPanel" hidden></div>
         </span>
       </label>
+      <label>Show
+        <select id="type"></select>
+      </label>
       <label>Years
         <select id="yearFrom"></select>
         <span>–</span>
@@ -119,11 +132,48 @@
   <script type="module">
     const esc = (s) => String(s ?? '').replace(/[&<>"]/g,
       (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const clip = (s, n) => { s = String(s ?? ''); return s.length > n ? s.slice(0, n).replace(/\s+\S*$/, '') + '…' : s; };
+    // Mark a Pagefind excerpt as a mid-text snippet with leading/trailing … when
+    // it doesn't already start/end at a clean boundary.
+    const snippet = (ex) => {
+      const plain = String(ex).replace(/<[^>]+>/g, '').trim();
+      const lead = /^[A-Z0-9"“'(\[]/.test(plain) ? '' : '…';
+      const tail = /[.!?…"”')\]]$/.test(plain) ? '' : '…';
+      return `${lead}${ex}${tail}`;
+    };
+    // Our own highlighter (for WoG, where we render question/answer from meta
+    // rather than Pagefind's merged excerpt). Escapes text, marks query terms.
+    const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    function highlight(text, terms) {
+      text = String(text ?? '');
+      const valid = terms.filter((t) => t.length >= 2);
+      if (!valid.length) return esc(text);
+      const re = new RegExp(`(${valid.map(escapeRe).join('|')})`, 'gi');
+      let out = '', last = 0, m;
+      while ((m = re.exec(text))) {
+        out += esc(text.slice(last, m.index)) + '<mark>' + esc(m[0]) + '</mark>';
+        last = m.index + m[0].length;
+        if (m.index === re.lastIndex) re.lastIndex++;
+      }
+      return out + esc(text.slice(last));
+    }
+    // A window of `max` chars centred on the first query-term match, highlighted.
+    function snippetAround(text, terms, max) {
+      text = String(text ?? '');
+      if (!terms.length || text.length <= max) return highlight(text.length > max ? clip(text, max) : text, terms);
+      const low = text.toLowerCase();
+      let idx = -1;
+      for (const t of terms) { const i = low.indexOf(t.toLowerCase()); if (i >= 0 && (idx < 0 || i < idx)) idx = i; }
+      if (idx < 0) return highlight(clip(text, max), terms);
+      const start = Math.max(0, idx - 60), end = Math.min(text.length, start + max);
+      return (start > 0 ? '…' : '') + highlight(text.slice(start, end), terms) + (end < text.length ? '…' : '');
+    }
 
     const qEl = document.getElementById('q');
     const sortEl = document.getElementById('sort');
     const yearFromEl = document.getElementById('yearFrom');
     const yearToEl = document.getElementById('yearTo');
+    const typeEl = document.getElementById('type');
     const worksBtn = document.getElementById('worksBtn');
     const worksPanel = document.getElementById('worksPanel');
     const statusEl = document.getElementById('status');
@@ -134,6 +184,7 @@
     const PAGE = 10;
     let pending = null;   // current result list awaiting render
     let shown = 0;
+    let queryTerms = [];  // terms to highlight in WoG question/answer
 
     // Pagefind loads in the background; it is only awaited when a search runs.
     // Relative path so the bundle resolves under a root (Cloudflare, local) or
@@ -142,17 +193,25 @@
 
     // Populate the filters instantly from build-time metadata, falling back to
     // the Pagefind index only if meta.json is missing.
-    let works = [], allYears = [];
+    let works = [], allYears = [], types = [];
     try {
       const meta = await (await fetch('./meta.json')).json();
       works = meta.works || [];
       allYears = meta.years || [];
+      types = meta.types || [];
     } catch { /* fall back below */ }
     if (!works.length || !allYears.length) {
       const available = await (await pagefindPromise).filters();
       if (!works.length) works = Object.entries(available.work || {}).sort((a, b) => a[0].localeCompare(b[0]));
       if (!allYears.length) allYears = Object.keys(available.year || {}).sort();
+      if (!types.length) types = Object.entries(available.type || {}).sort((a, b) => a[0].localeCompare(b[0]));
     }
+
+    // Type filter: Everything / Fiction / Word of God.
+    const TYPE_LABELS = { Fiction: 'Fiction', WoG: 'Word of God' };
+    typeEl.innerHTML = '<option value="">Everything</option>' +
+      types.map(([t, c]) =>
+        `<option value="${esc(t)}">${esc(TYPE_LABELS[t] || t)}${c ? ` (${c.toLocaleString()})` : ''}</option>`).join('');
 
     // Works multi-select popup.
     worksPanel.innerHTML = works
@@ -209,6 +268,7 @@
     function buildOptions() {
       const filters = {};
       if (selectedWorks.size) filters.work = { any: [...selectedWorks] };
+      if (typeEl.value) filters.type = typeEl.value;
       const yr = yearRange();
       if (yr) filters.year = { any: yr };
       const opts = {};
@@ -220,12 +280,14 @@
     let timer;
     qEl.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(run, 180); });
     sortEl.addEventListener('change', run);
+    typeEl.addEventListener('change', run);
     yearFromEl.addEventListener('change', run);
     yearToEl.addEventListener('change', run);
     moreBtn.addEventListener('click', renderMore);
 
     async function run() {
       const query = qEl.value.trim();
+      queryTerms = query ? query.split(/\s+/).filter((t) => t.length > 1) : [];
       const { opts, refined } = buildOptions();
       const browsing = !query && refined;
 
@@ -261,17 +323,27 @@
     }
 
     function card(d) {
-      const url = (d.meta && d.meta.url) || d.url;
-      const title = (d.meta && d.meta.title) || 'Chapter';
-      const work = (d.meta && d.meta.work) || '';
-      const date = (d.meta && d.meta.date) || '';
+      const m = d.meta || {};
+      const url = m.url || d.url;
+      const title = m.title || 'Chapter';
+      const work = m.work || '';
+      const date = m.date || '';
+      const isWoG = m.type === 'WoG';
+      const context = isWoG && m.question
+        ? `<p class="r-context"><span class="r-asker">${esc(m.asked_by || 'A reader')} asked:</span> ${snippetAround(m.question, queryTerms, 200)}</p>`
+        : '';
+      const answer = isWoG
+        ? `<span class="r-answer-by">Wildbow:</span> ${m.answer ? snippetAround(m.answer, queryTerms, 300) : snippet(d.excerpt)}`
+        : snippet(d.excerpt);
       return `<li class="result">
         <div class="r-head">
           <a class="r-title" href="${esc(url)}" target="_blank" rel="noopener">${esc(title)}</a>
           ${work ? `<span class="source-pill">${esc(work)}</span>` : ''}
+          ${isWoG ? `<span class="wog-pill">${esc(m.source || 'Comment')}</span>` : ''}
           ${date ? `<span class="r-date">${esc(date)}</span>` : ''}
         </div>
-        <p class="r-excerpt">${d.excerpt}</p>
+        ${context}
+        <p class="r-excerpt">${answer}</p>
         <a class="r-url" href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a>
       </li>`;
     }

@@ -50,7 +50,8 @@ browser only downloads the fragments a query touches).
 | Ward / Glow-worm  | `parahumans.net`                | HTML scrape (TOC → pages) | 280      | ✅      |
 | Claw              | `clawwebserial.blog`            | WordPress.com API         | 40       | ✅      |
 | Seek              | `seekwebserial.wordpress.com`   | WordPress.com API         | 43       | ✅      |
-| Word of God (WoG) | Reddit / blog / forum archives  | (phase 2)                 | —        | ⏳      |
+| WoG — blog comments | serial comment sections       | WordPress.com API         | 3,391    | ✅      |
+| WoG — Reddit/forums | r/Parahumans, SB, SV            | (future)                  | —        | ⏳      |
 
 `parahumans.net` doesn't make its REST API/feeds/sitemaps available like Wordpress (403), so
 Ward is ingested by scraping the public table-of-contents for chapter links and
@@ -80,7 +81,8 @@ are git-ignored — Wooble ships the *index*, not the text.
 - [x] Ward / Glow-worm via HTML scrape (`parahumans.net` blocks its API)
 - [x] Date controls: sort by date + year-range filter
 - [x] Live on GitHub Pages (`pnpm run deploy` force-pushes site/ to gh-pages)
-- [ ] Word of God: Reddit comments, blog replies, forum archives
+- [x] Word of God — Wildbow's blog comments, with the question kept as searchable context
+- [ ] Word of God — Reddit (r/Parahumans), SpaceBattles, SufficientVelocity
 - [ ] Auto re-index when new chapters drop
 
 ## Credits

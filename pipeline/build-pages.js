@@ -15,17 +15,34 @@ const esc = (s) =>
   String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 function pageHtml(rec) {
-  const paragraphs = rec.text
-    .split('\n\n')
-    .filter(Boolean)
-    .map((p) => `    <p>${esc(p)}</p>`)
-    .join('\n');
+  const type = rec.type || 'Fiction';
+  const year = rec.date ? rec.date.slice(0, 4) : '';
+
+  // WoG indexes the question (context) and Wildbow's answer together; fiction
+  // indexes the chapter prose. Extra meta lets the UI render WoG distinctly.
+  let body, extraMeta = '';
+  if (type === 'WoG') {
+    // Body (searchable): de-weighted question + Wildbow's answer, so a topic
+    // raised only in the question still surfaces his reply without outranking
+    // real answers. The question and answer are ALSO emitted as meta in the
+    // hidden block below; the UI renders them from those separate fields (never
+    // the merged excerpt), so question text is never misattributed to Wildbow.
+    const q = rec.question ? `    <p data-pagefind-weight="0.1">${esc(rec.question)}</p>\n` : '';
+    body = `${q}    <p>${esc(rec.text)}</p>`;
+    extraMeta =
+      `    <span data-pagefind-meta="source">${esc(rec.source ?? 'Comment')}</span>\n` +
+      `    <span data-pagefind-meta="chapter">${esc(rec.chapterTitle ?? '')}</span>\n` +
+      `    <span data-pagefind-meta="asked_by">${esc(rec.parentAuthor ?? '')}</span>\n` +
+      (rec.question ? `    <span data-pagefind-meta="question">${esc(rec.question)}</span>\n` : '') +
+      `    <span data-pagefind-meta="answer">${esc(rec.text)}</span>\n`;
+  } else {
+    body = rec.text.split('\n\n').filter(Boolean).map((p) => `    <p>${esc(p)}</p>`).join('\n');
+  }
 
   // Metadata/filters live in a hidden block *outside* the indexed body, so their
   // labels never leak into search snippets. Pagefind still captures them.
   // One metadata source per element (an element gets at most one
   // data-pagefind-meta); `url[href]` pulls the canonical link from the attribute.
-  const year = rec.date ? rec.date.slice(0, 4) : '';
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -36,14 +53,14 @@ function pageHtml(rec) {
 <body>
   <div hidden>
     <span data-pagefind-filter="work" data-pagefind-meta="work">${esc(rec.work)}</span>
-    <span data-pagefind-filter="type" data-pagefind-meta="type">Fiction</span>
+    <span data-pagefind-filter="type" data-pagefind-meta="type">${esc(type)}</span>
     ${year ? `<span data-pagefind-filter="year">${esc(year)}</span>` : ''}
     <time data-pagefind-meta="date" data-pagefind-sort="date">${esc(rec.date)}</time>
     <a data-pagefind-meta="url[href]" href="${esc(rec.url)}">source</a>
-  </div>
+${extraMeta}  </div>
   <main data-pagefind-body>
     <h1 data-pagefind-meta="title">${esc(rec.title)}</h1>
-${paragraphs}
+${body}
   </main>
 </body>
 </html>`;
@@ -51,17 +68,25 @@ ${paragraphs}
 
 async function main() {
   await rm(BUILD_DIR, { recursive: true, force: true });
+  // Clear the previous index bundle too: Pagefind hashes fragment filenames by
+  // content and doesn't purge old ones, so without this they accumulate across
+  // rebuilds and bloat the deploy.
+  await rm('site/pagefind', { recursive: true, force: true });
 
   const files = (await readdir(CORPUS_DIR)).filter((f) => f.endsWith('.json'));
   let total = 0,
     skipped = 0;
   const years = new Set();
   const workCounts = new Map();
+  const typeCounts = new Map();
 
   for (const file of files) {
     const recs = JSON.parse(await readFile(join(CORPUS_DIR, file), 'utf8'));
     for (const rec of recs) {
-      if (rec.wordCount < MIN_WORDS) {
+      // Skip empty/announcement fiction posts, but keep all non-empty WoG —
+      // Wildbow's replies are often a valuable single sentence.
+      const isWoG = (rec.type || 'Fiction') === 'WoG';
+      if (isWoG ? rec.wordCount === 0 : rec.wordCount < MIN_WORDS) {
         skipped++;
         continue;
       }
@@ -72,6 +97,7 @@ async function main() {
       await writeFile(join(dir, `${slug}.html`), pageHtml(rec));
       total++;
       workCounts.set(rec.work, (workCounts.get(rec.work) ?? 0) + 1);
+      typeCounts.set(rec.type || 'Fiction', (typeCounts.get(rec.type || 'Fiction') ?? 0) + 1);
       if (rec.date) years.add(rec.date.slice(0, 4));
     }
   }
@@ -81,6 +107,7 @@ async function main() {
   // corpus, so the year range tracks whatever sources are present.
   const meta = {
     works: [...workCounts].sort((a, b) => a[0].localeCompare(b[0])),
+    types: [...typeCounts].sort((a, b) => a[0].localeCompare(b[0])),
     years: [...years].sort(),
     chapters: total,
   };
