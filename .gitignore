@@ -1,0 +1,9 @@
+# Private project/collaboration config — never publish
+CLAUDE.md
+
+node_modules/
+data/raw/
+data/corpus/
+site/pagefind/
+*.log
+.DS_Store

@@ -1,0 +1,9 @@
+{
+  "works": [
+    { "slug": "worm", "title": "Worm",  "api": "wpcom",  "site": "parahumans.wordpress.com" },
+    { "slug": "pact", "title": "Pact",  "api": "wpcom",  "site": "pactwebserial.wordpress.com" },
+    { "slug": "twig", "title": "Twig",  "api": "wpcom",  "site": "twigserial.wordpress.com" },
+    { "slug": "pale", "title": "Pale",  "api": "wpcom",  "site": "palewebserial.wordpress.com" },
+    { "slug": "ward", "title": "Ward",  "api": "wpjson", "site": "www.parahumans.net", "status": "blocked-403" }
+  ]
+}

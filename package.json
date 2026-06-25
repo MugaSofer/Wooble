@@ -1,0 +1,15 @@
+{
+  "name": "wooble",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A tiny search engine for Wildbow's web serials — a fan-made finder that links out to the original chapters.",
+  "type": "module",
+  "scripts": {
+    "ingest": "node pipeline/ingest-wordpress.js",
+    "build:pages": "node pipeline/build-pages.js",
+    "index": "pagefind --site site",
+    "build": "node pipeline/ingest-wordpress.js && node pipeline/build-pages.js && pagefind --site site",
+    "serve": "node pipeline/serve.js"
+  },
+  "license": "MIT"
+}
