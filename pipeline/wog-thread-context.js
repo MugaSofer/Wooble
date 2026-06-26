@@ -14,7 +14,6 @@ import { htmlToText } from './clean.js';
 const SRC_DIR = 'Spacebattles WoG Repository';
 const CORPUS = 'data/corpus/wog-spacebattles.json';
 const OUT = 'data/wog-thread-context.json';
-const WINDOW = 12; // markers of context on each side of the target quote
 
 const insideQuote = (node) => {
   for (let p = node.parentNode; p; p = p.parentNode) {
@@ -80,7 +79,23 @@ function render(ms, targetIdx) {
 
 async function main() {
   const records = JSON.parse(await readFile(CORPUS, 'utf8'));
-  const targets = new Map(records.filter((r) => r.source === 'WoG Thread').map((r) => [r.id, r]));
+  // Skip entries the build-time verbatim comment-match already folds in, so this
+  // pass only sees what's genuinely still unattributed (same matcher as build-pages).
+  const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const commentTexts = [];
+  for (const f of (await readdir('data/corpus')).filter((f) => /^wog-(worm|pact|twig|pale|claw|seek)\.json$/.test(f)))
+    for (const r of JSON.parse(await readFile(join('data/corpus', f), 'utf8')))
+      if (r.source === 'Comment') { const n = norm(r.text); if (n.length >= 40) commentTexts.push(n); }
+  const verbatimMatched = (text) => {
+    const q = norm(text);
+    if (q.length < 40) return false;
+    const probe = q.slice(0, 200);
+    const hits = commentTexts.filter((n) => n.includes(probe));
+    return hits.length === 1 || (hits.length > 1 && q.length >= 120);
+  };
+  const targets = new Map(records
+    .filter((r) => r.source === 'WoG Thread' && !verbatimMatched(r.text))
+    .map((r) => [r.id, r]));
 
   const files = (await readdir(SRC_DIR)).filter((f) => f.endsWith('.html'));
   const handled = new Set();
@@ -95,14 +110,12 @@ async function main() {
         if (m.kind !== 'quote' || !targets.has(m.id) || handled.has(m.id)) return;
         handled.add(m.id);
         const rec = targets.get(m.id);
-        const lo = Math.max(0, idx - WINDOW), hi = Math.min(ms.length, idx + WINDOW + 1);
         contexts.push({
           id: m.id,
           postUrl: rec.url,
           label: rec.question || '',
           quote: rec.text,
-          transcript: render(ms.slice(lo, hi), idx - lo),
-          windowed: lo > 0 || hi < ms.length,
+          transcript: render(ms, idx), // the whole post, target quote marked
         });
       });
     }

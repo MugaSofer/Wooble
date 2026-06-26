@@ -26,7 +26,10 @@ async function main() {
     return /\s/.test(host) || !host.includes('.') || /(^|\.)cdn\.discordapp\.com$/i.test(host);
   };
 
-  const patch = {};
+  // Additive: keep attributions from earlier passes and add the new ones.
+  let patch = {};
+  try { patch = JSON.parse(await readFile(OUT, 'utf8')); } catch { /* first pass */ }
+  const preexisting = Object.keys(patch).length;
   const accepted = [];
   const flagged = [];
   let threadOnly = 0;
@@ -63,7 +66,7 @@ async function main() {
     flagged.forEach((v) => console.log(`   ${v.id} [${v.reason}] -> ${v.url || '(no url)'} | ${v.why}`));
   }
   if (missing.length) console.log('\nMISSING ids (no verdict):', missing);
-  console.log(`\nPatch written to ${OUT} (${Object.keys(patch).length} entries).`);
+  console.log(`\nPatch written to ${OUT} (${Object.keys(patch).length} entries: ${preexisting} prior + ${accepted.length} new).`);
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

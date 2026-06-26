@@ -11,7 +11,9 @@ const PER = Number(process.argv[2]) || 14;
 
 async function main() {
   const ctx = JSON.parse(await readFile(IN, 'utf8'));
+  // Clear both dirs so a re-run never leaves stale parts from a prior pass.
   await rm(BATCH_DIR, { recursive: true, force: true });
+  await rm(PART_DIR, { recursive: true, force: true });
   await mkdir(BATCH_DIR, { recursive: true });
   await mkdir(PART_DIR, { recursive: true });
 
