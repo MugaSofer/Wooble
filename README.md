@@ -11,8 +11,8 @@ Wildbow's own sites.
 > **Wooble does not host or re-publish the stories.** It's a search index that shows a
 > short snippet for context and links out to the original chapters — the same way a
 > web search engine does. All of Wildbow's writing remains his, and every result drives
-> traffic back to where he publishes it. If Wildbow would prefer this not exist, it comes
-> down — no questions asked (contact: mugasofer@gmail.com).
+> traffic back to where he publishes it. (If Wildbow would prefer this not exist, just
+> contact me and I can take it down.)
 
 ## How it works
 
@@ -41,17 +41,23 @@ browser only downloads the fragments a query touches).
 
 ## Sources
 
-| Serial            | Source                          | Via                       | Chapters | Status |
-| ----------------- | ------------------------------- | ------------------------- | -------- | ------ |
-| Worm              | `parahumans.wordpress.com`      | WordPress.com API         | 313      | ✅      |
-| Pact              | `pactwebserial.wordpress.com`   | WordPress.com API         | 154      | ✅      |
-| Twig              | `twigserial.wordpress.com`      | WordPress.com API         | 321      | ✅      |
-| Pale              | `palewebserial.wordpress.com`   | WordPress.com API         | 336      | ✅      |
-| Ward / Glow-worm  | `parahumans.net`                | HTML scrape (TOC → pages) | 280      | ✅      |
-| Claw              | `clawwebserial.blog`            | WordPress.com API         | 40       | ✅      |
-| Seek              | `seekwebserial.wordpress.com`   | WordPress.com API         | 43       | ✅      |
-| WoG — blog comments | serial comment sections       | WordPress.com API         | 3,391    | ✅      |
-| WoG — Reddit/forums | r/Parahumans, SB, SV            | (future)                  | —        | ⏳      |
+| Serial            	| Source                          | Via                       | Entries	 | Status |
+| --------------------- | ------------------------------- | ------------------------- | -------- | ------ |
+| Worm              	| `parahumans.wordpress.com`      | WordPress.com API         | 313      | ✅      |
+| Pact              	| `pactwebserial.wordpress.com`   | WordPress.com API         | 154      | ✅      |
+| Twig              	| `twigserial.wordpress.com`      | WordPress.com API         | 321      | ✅      |
+| Pale              	| `palewebserial.wordpress.com`   | WordPress.com API         | 336      | ✅      |
+| Ward / Glow-worm  	| `parahumans.net`                | HTML scrape (TOC → pages) | 280      | ✅      |
+| Claw              	| `clawwebserial.blog`            | WordPress.com API         | 40       | ✅      |
+| Seek             		| `seekwebserial.wordpress.com`   | WordPress.com API         | 43       | ✅      |
+| WoG — blog comments	| serial comment sections		  | WordPress.com API         | 3,388    | ✅      |
+| WoG — SB WoG Thread 	| `spacebattles.com`           	  | custom parser             | 952      | ✅      |
+| WoG — Reddit		 	| r/Parahumans, Weaverdice (+2)   | PullPush                  | 3,250    | ✅      |
+
+The two comment dumps (blog and Reddit) are noisy — most of it is thanks, scheduling,
+moderation and banter. Each comment is classified by an LLM (Haiku) against the question
+it answers, and only the on-topic **canon** statements are served; the rest stays in the
+archive. The counts above are the full scrape, not the served subset.
 
 `parahumans.net` doesn't make its REST API/feeds/sitemaps available like Wordpress (403), so
 Ward is ingested by scraping the public table-of-contents for chapter links and
@@ -82,7 +88,9 @@ are git-ignored — Wooble ships the *index*, not the text.
 - [x] Date controls: sort by date + year-range filter
 - [x] Live on GitHub Pages (`pnpm run deploy` force-pushes site/ to gh-pages)
 - [x] Word of God — Wildbow's blog comments, with the question kept as searchable context
-- [ ] Word of God — Reddit (r/Parahumans), SpaceBattles, SufficientVelocity
+- [x] Word of God — the SpaceBattles WoG repository thread (Reddit / SV / SB / forum quotes)
+- [x] Word of God — Reddit, full comment history via PullPush + parent-context enrichment
+- [x] LLM canon-classification of the comment dumps (serve the on-topic statements, archive the banter)
 - [ ] Auto re-index when new chapters drop
 
 ## Credits
