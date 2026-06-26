@@ -14,9 +14,22 @@ const MIN_WORDS = 50; // skip announcement/nav-only posts
 const esc = (s) =>
   String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+// One or more filter `category` values per record. Fiction = its work. WoG = its
+// source (blog comments kept per-work). Anything cited in the SpaceBattles WoG
+// thread ALSO carries the cross-cutting "WoGThread" value, so a cited blog
+// comment belongs to both its work and the thread — one record, two memberships.
+function categoriesOf(rec) {
+  const type = rec.type || 'Fiction';
+  if (type !== 'WoG') return [rec.work];
+  if (rec.source === 'Comment') return rec.cited ? [`Comment:${rec.work}`, 'WoGThread'] : [`Comment:${rec.work}`];
+  const origin = { Reddit: 'Reddit', SufficientVelocity: 'SufficientVelocity', SpaceBattles: 'SpaceBattles' }[rec.source] || 'WoGThreadOnly';
+  return [origin, 'WoGThread'];
+}
+
 function pageHtml(rec) {
   const type = rec.type || 'Fiction';
   const year = rec.date ? rec.date.slice(0, 4) : '';
+  const categories = categoriesOf(rec);
 
   // WoG indexes the question (context) and Wildbow's answer together; fiction
   // indexes the chapter prose. Extra meta lets the UI render WoG distinctly.
@@ -33,6 +46,7 @@ function pageHtml(rec) {
       `    <span data-pagefind-meta="source">${esc(rec.source ?? 'Comment')}</span>\n` +
       `    <span data-pagefind-meta="chapter">${esc(rec.chapterTitle ?? '')}</span>\n` +
       `    <span data-pagefind-meta="asked_by">${esc(rec.parentAuthor ?? '')}</span>\n` +
+      (rec.wogUrl ? `    <a data-pagefind-meta="wog_url[href]" href="${esc(rec.wogUrl)}">wog</a>\n` : '') +
       (rec.question ? `    <span data-pagefind-meta="question">${esc(rec.question)}</span>\n` : '') +
       `    <span data-pagefind-meta="answer">${esc(rec.text)}</span>\n`;
   } else {
@@ -52,10 +66,11 @@ function pageHtml(rec) {
 </head>
 <body>
   <div hidden>
-    <span data-pagefind-filter="work" data-pagefind-meta="work">${esc(rec.work)}</span>
-    <span data-pagefind-filter="type" data-pagefind-meta="type">${esc(type)}</span>
+    <span data-pagefind-meta="work">${esc(rec.work)}</span>
+    <span data-pagefind-meta="type">${esc(type)}</span>
+    ${categories.map((c) => `<span data-pagefind-filter="category">${esc(c)}</span>`).join('\n    ')}
     ${year ? `<span data-pagefind-filter="year">${esc(year)}</span>` : ''}
-    <time data-pagefind-meta="date" data-pagefind-sort="date">${esc(rec.date)}</time>
+    <time data-pagefind-meta="date"${rec.date ? ' data-pagefind-sort="date"' : ''}>${esc(rec.date)}</time>
     <a data-pagefind-meta="url[href]" href="${esc(rec.url)}">source</a>
 ${extraMeta}  </div>
   <main data-pagefind-body>
@@ -73,49 +88,76 @@ async function main() {
   // rebuilds and bloat the deploy.
   await rm('site/pagefind', { recursive: true, force: true });
 
+  // Load every record up front so we can cross-reference before generating.
   const files = (await readdir(CORPUS_DIR)).filter((f) => f.endsWith('.json'));
-  let total = 0,
-    skipped = 0;
-  const years = new Set();
-  const workCounts = new Map();
-  const typeCounts = new Map();
+  const all = [];
+  for (const file of files) all.push(...JSON.parse(await readFile(join(CORPUS_DIR, file), 'utf8')));
 
-  for (const file of files) {
-    const recs = JSON.parse(await readFile(join(CORPUS_DIR, file), 'utf8'));
-    for (const rec of recs) {
-      // Skip empty/announcement fiction posts, but keep all non-empty WoG —
-      // Wildbow's replies are often a valuable single sentence.
-      const isWoG = (rec.type || 'Fiction') === 'WoG';
-      if (isWoG ? rec.wordCount === 0 : rec.wordCount < MIN_WORDS) {
-        skipped++;
-        continue;
-      }
-      const dir = join(BUILD_DIR, rec.workSlug);
-      await mkdir(dir, { recursive: true });
-      // Derive a filesystem-safe slug from the chapter id.
-      const slug = rec.id.split(':').slice(1).join(':').replace(/[^a-z0-9-]+/gi, '-');
-      await writeFile(join(dir, `${slug}.html`), pageHtml(rec));
-      total++;
-      workCounts.set(rec.work, (workCounts.get(rec.work) ?? 0) + 1);
-      typeCounts.set(rec.type || 'Fiction', (typeCounts.get(rec.type || 'Fiction') ?? 0) + 1);
-      if (rec.date) years.add(rec.date.slice(0, 4));
+  // Merge: a blog comment cited in the SpaceBattles WoG thread is already in our
+  // corpus (we scraped all of Wildbow's comments), so enrich the scraped record
+  // with the repository link and a `cited` flag rather than keep a duplicate.
+  const commentById = new Map();
+  for (const r of all) {
+    if (r.type === 'WoG' && r.source === 'Comment') {
+      const m = String(r.url || '').match(/#comment-(\d+)/);
+      if (m) commentById.set(m[1], r);
+    }
+  }
+  const records = [];
+  for (const r of all) {
+    const fromThread = typeof r.id === 'string' && r.id.startsWith('wog:sb:');
+    if (fromThread && r.source === 'Blog') {
+      const m = String(r.url || '').match(/#comment-(\d+)/);
+      const hit = m && commentById.get(m[1]);
+      if (hit) { hit.cited = true; hit.wogUrl = r.wogUrl; continue; } // merge & drop the dup
+      r.source = 'Comment'; r.cited = true; // unmatched citation → a cited Worm comment
+    } else if (fromThread) {
+      r.cited = true; // every other repository entry is "in the thread"
+    }
+    records.push(r);
+  }
+
+  let total = 0, skipped = 0;
+  const years = new Set();
+  const fiction = new Map();      // work -> fiction chapter count
+  const wogComment = new Map();   // work -> blog-comment WoG count
+  const threadOrigins = new Map(); // origin -> count, within the WoG thread
+  let threadTotal = 0;
+
+  for (const rec of records) {
+    const isWoG = (rec.type || 'Fiction') === 'WoG';
+    if (isWoG ? rec.wordCount === 0 : rec.wordCount < MIN_WORDS) { skipped++; continue; }
+    const dir = join(BUILD_DIR, rec.workSlug);
+    await mkdir(dir, { recursive: true });
+    const slug = rec.id.split(':').slice(1).join(':').replace(/[^a-z0-9-]+/gi, '-');
+    await writeFile(join(dir, `${slug}.html`), pageHtml(rec));
+    total++;
+    if (rec.date) years.add(rec.date.slice(0, 4));
+    if (!isWoG) { fiction.set(rec.work, (fiction.get(rec.work) ?? 0) + 1); continue; }
+    if (rec.source === 'Comment') wogComment.set(rec.work, (wogComment.get(rec.work) ?? 0) + 1);
+    const cats = categoriesOf(rec);
+    if (cats.includes('WoGThread')) {
+      threadTotal++;
+      const origin = cats.find((c) => c !== 'WoGThread' && !c.startsWith('Comment:'));
+      if (origin) threadOrigins.set(origin, (threadOrigins.get(origin) ?? 0) + 1);
     }
   }
 
-  // Build-time metadata so the UI can populate its filter dropdowns instantly,
-  // without waiting on the Pagefind index to load. Derived from the actual
-  // corpus, so the year range tracks whatever sources are present.
+  const ORDER = ['Worm', 'Pact', 'Twig', 'Ward', 'Pale', 'Claw', 'Seek'];
+  const byWork = (a, b) => ORDER.indexOf(a[0]) - ORDER.indexOf(b[0]);
+  const ORIGIN_ORDER = ['WoGThreadOnly', 'Reddit', 'SufficientVelocity', 'SpaceBattles'];
   const meta = {
-    works: [...workCounts].sort((a, b) => a[0].localeCompare(b[0])),
-    types: [...typeCounts].sort((a, b) => a[0].localeCompare(b[0])),
+    fiction: [...fiction].sort(byWork),
+    wogComment: [...wogComment].sort(byWork),
+    wogThread: { total: threadTotal, origins: [...threadOrigins].sort((a, b) => ORIGIN_ORDER.indexOf(a[0]) - ORIGIN_ORDER.indexOf(b[0])) },
     years: [...years].sort(),
-    chapters: total,
+    items: total,
   };
   await mkdir('site', { recursive: true });
   await writeFile(join('site', 'meta.json'), JSON.stringify(meta));
 
-  console.log(`Wrote ${total} chapter pages to ${BUILD_DIR}/ (skipped ${skipped} short posts).`);
-  console.log(`Wrote site/meta.json: ${meta.works.length} works, years ${meta.years[0]}–${meta.years.at(-1)}.`);
+  console.log(`Wrote ${total} pages to ${BUILD_DIR}/ (skipped ${skipped} short).`);
+  console.log(`meta.json: ${meta.fiction.length} works, ${meta.wogComment.length} comment-works, WoG-thread ${threadTotal} (${meta.wogThread.origins.map((o) => o.join(':')).join(', ')}), years ${meta.years[0]}–${meta.years.at(-1)}.`);
 }
 
 main().catch((e) => {

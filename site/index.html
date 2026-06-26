@@ -38,7 +38,7 @@
     .dd-btn::after { content: "▾"; margin-left: .35rem; opacity: .6; }
     .dd-btn[aria-expanded="true"] { border-color: var(--accent); }
     .dd-panel {
-      position: absolute; z-index: 10; top: calc(100% + 5px); left: 0; min-width: 190px;
+      position: absolute; z-index: 10; top: calc(100% + 5px); left: 0; min-width: 215px;
       max-height: 300px; overflow: auto; background: var(--panel); border: 1px solid var(--line);
       border-radius: 10px; padding: .35rem; box-shadow: 0 10px 28px rgba(0, 0, 0, .45);
     }
@@ -49,6 +49,7 @@
     .dd-panel label:hover { background: #1f242e; }
     .dd-panel input { accent-color: var(--accent); }
     .dd-panel .count { margin-left: auto; opacity: .5; font-variant-numeric: tabular-nums; }
+    .dd-panel label.dd-parent { font-weight: 600; }
     #status { color: var(--muted); font-size: .85rem; margin: 1rem .2rem .4rem; min-height: 1.2em; }
     #results { list-style: none; margin: 0; padding: 0; }
     .result { padding: 1rem 0; border-top: 1px solid var(--line); }
@@ -74,6 +75,7 @@
     .r-excerpt mark { background: #4a3b12; color: #ffe8a3; padding: 0 .1em; border-radius: 2px; }
     .r-url { color: var(--muted); font-size: .8rem; text-decoration: none; word-break: break-all; }
     .r-url:hover { color: var(--accent); }
+    .r-wog { margin-left: .6rem; }
     #more {
       display: none; margin: 1.5rem auto 0; padding: .55rem 1.4rem; font: inherit; cursor: pointer;
       color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
@@ -96,14 +98,11 @@
     <input id="q" type="search" autocomplete="off" autofocus
            placeholder="Search Worm, Pact, Twig, Ward, Pale, Claw, Seek…">
     <div class="controls">
-      <label>Works
+      <label>Sources
         <span class="dropdown">
-          <button type="button" id="worksBtn" class="dd-btn" aria-haspopup="true" aria-expanded="false">All works</button>
-          <div class="dd-panel" id="worksPanel" hidden></div>
+          <button type="button" id="srcBtn" class="dd-btn" aria-haspopup="true" aria-expanded="false">All sources</button>
+          <div class="dd-panel" id="srcPanel" hidden></div>
         </span>
-      </label>
-      <label>Show
-        <select id="type"></select>
       </label>
       <label>Years
         <select id="yearFrom"></select>
@@ -173,14 +172,13 @@
     const sortEl = document.getElementById('sort');
     const yearFromEl = document.getElementById('yearFrom');
     const yearToEl = document.getElementById('yearTo');
-    const typeEl = document.getElementById('type');
-    const worksBtn = document.getElementById('worksBtn');
-    const worksPanel = document.getElementById('worksPanel');
+    const srcBtn = document.getElementById('srcBtn');
+    const srcPanel = document.getElementById('srcPanel');
     const statusEl = document.getElementById('status');
     const resultsEl = document.getElementById('results');
     const moreBtn = document.getElementById('more');
 
-    const selectedWorks = new Set();
+    const selectedCategories = new Set();
     const PAGE = 10;
     let pending = null;   // current result list awaiting render
     let shown = 0;
@@ -191,65 +189,93 @@
     // a subpath (GitHub Pages /Wooble/).
     const pagefindPromise = import('./pagefind/pagefind.js');
 
-    // Populate the filters instantly from build-time metadata, falling back to
-    // the Pagefind index only if meta.json is missing.
-    let works = [], allYears = [], types = [];
-    try {
-      const meta = await (await fetch('./meta.json')).json();
-      works = meta.works || [];
-      allYears = meta.years || [];
-      types = meta.types || [];
-    } catch { /* fall back below */ }
-    if (!works.length || !allYears.length) {
-      const available = await (await pagefindPromise).filters();
-      if (!works.length) works = Object.entries(available.work || {}).sort((a, b) => a[0].localeCompare(b[0]));
-      if (!allYears.length) allYears = Object.keys(available.year || {}).sort();
-      if (!types.length) types = Object.entries(available.type || {}).sort((a, b) => a[0].localeCompare(b[0]));
+    // Filter data from build-time metadata (loads instantly; tiny file).
+    let meta = {};
+    try { meta = await (await fetch('./meta.json')).json(); } catch { /* fall back */ }
+    if (!meta.fiction) {
+      const f = await (await pagefindPromise).filters();
+      meta = {
+        fiction: Object.entries(f.category || {}).filter(([k]) => /^(Worm|Pact|Twig|Ward|Pale|Claw|Seek)$/.test(k)),
+        wogComment: [], wogThread: { total: 0, origins: [] }, years: Object.keys(f.year || {}).sort(),
+      };
     }
 
-    // Type filter: Everything / Fiction / Word of God.
-    const TYPE_LABELS = { Fiction: 'Fiction', WoG: 'Word of God' };
-    typeEl.innerHTML = '<option value="">Everything</option>' +
-      types.map(([t, c]) =>
-        `<option value="${esc(t)}">${esc(TYPE_LABELS[t] || t)}${c ? ` (${c.toLocaleString()})` : ''}</option>`).join('');
+    // Tiered "Sources" tree. Fiction → works. Word of God → blog comments
+    // (per-work) + the WoG Thread group. A node maps to one `category` value; a
+    // record can carry several (a cited blog comment is tagged both its work and
+    // "WoGThread"), so any mix of leaves ORs together in a single Pagefind filter.
+    // "WoG Thread (all)" is itself selectable (the WoGThread tag) and groups the
+    // repository's entries by their original source.
+    const ORIGIN_LABELS = { WoGThreadOnly: 'Only in the thread', Reddit: 'Reddit', SufficientVelocity: 'SufficientVelocity', SpaceBattles: 'SpaceBattles' };
+    const wt = meta.wogThread || { total: 0, origins: [] };
+    const tree = [
+      { label: 'Fiction', children: (meta.fiction || []).map(([w, c]) => ({ label: w, count: c, cat: w })) },
+      {
+        label: 'Word of God',
+        children: [
+          ...((meta.wogComment || []).length
+            ? [{ label: 'Blog comments', children: meta.wogComment.map(([w, c]) => ({ label: w, count: c, cat: `Comment:${w}` })) }]
+            : []),
+          ...(wt.total
+            ? [{
+                label: 'WoG Thread', cat: 'WoGThread', count: wt.total,
+                children: (wt.origins || []).map(([o, c]) => ({ label: ORIGIN_LABELS[o] || o, count: c, cat: o })),
+              }]
+            : []),
+        ],
+      },
+    ];
 
-    // Works multi-select popup.
-    worksPanel.innerHTML = works
-      .map(([name, count]) =>
-        `<label><input type="checkbox" value="${esc(name)}">${esc(name)}` +
-        `<span class="count">${count}</span></label>`)
-      .join('');
-
-    function updateWorksLabel() {
-      const n = selectedWorks.size;
-      worksBtn.textContent = n === 0 ? 'All works'
-        : n <= 2 ? [...selectedWorks].join(', ')
-        : `${n} works`;
+    const leafCats = (node) => (node.cat ? [node.cat] : node.children.flatMap(leafCats));
+    const nodeCount = (node) => (node.cat ? node.count : node.children.reduce((s, c) => s + nodeCount(c), 0));
+    function renderNode(node, depth) {
+      const cls = node.children ? ' class="dd-parent"' : '';
+      const row = `<label${cls} style="padding-left:${(0.45 + depth * 1.15).toFixed(2)}rem">` +
+        `<input type="checkbox" data-cats="${esc(leafCats(node).join('|'))}">${esc(node.label)}` +
+        `<span class="count">${nodeCount(node).toLocaleString()}</span></label>`;
+      return node.children ? row + node.children.map((c) => renderNode(c, depth + 1)).join('') : row;
     }
-    function closeWorks() {
-      worksPanel.hidden = true;
-      worksBtn.setAttribute('aria-expanded', 'false');
+    srcPanel.innerHTML = tree.map((n) => renderNode(n, 0)).join('');
+
+    // Reflect selectedCategories onto every checkbox (checked / indeterminate).
+    function refreshChecks() {
+      srcPanel.querySelectorAll('input[type=checkbox]').forEach((cb) => {
+        const cats = cb.dataset.cats ? cb.dataset.cats.split('|') : [];
+        const sel = cats.filter((c) => selectedCategories.has(c)).length;
+        cb.checked = sel > 0 && sel === cats.length;
+        cb.indeterminate = sel > 0 && sel < cats.length;
+      });
+    }
+    function updateSrcLabel() {
+      srcBtn.textContent = selectedCategories.size === 0 ? 'All sources' : `${selectedCategories.size} selected`;
+    }
+    function closeSrc() {
+      srcPanel.hidden = true;
+      srcBtn.setAttribute('aria-expanded', 'false');
     }
 
-    worksBtn.addEventListener('click', (e) => {
+    srcBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const willOpen = worksPanel.hidden;
-      worksPanel.hidden = !willOpen;
-      worksBtn.setAttribute('aria-expanded', String(willOpen));
+      const open = srcPanel.hidden;
+      srcPanel.hidden = !open;
+      srcBtn.setAttribute('aria-expanded', String(open));
     });
-    worksPanel.addEventListener('change', (e) => {
+    srcPanel.addEventListener('change', (e) => {
       const cb = e.target;
       if (!(cb instanceof HTMLInputElement)) return;
-      cb.checked ? selectedWorks.add(cb.value) : selectedWorks.delete(cb.value);
-      updateWorksLabel();
+      (cb.dataset.cats ? cb.dataset.cats.split('|') : []).forEach((c) =>
+        cb.checked ? selectedCategories.add(c) : selectedCategories.delete(c));
+      refreshChecks();
+      updateSrcLabel();
       run();
     });
     document.addEventListener('click', (e) => {
-      if (!worksPanel.hidden && !worksPanel.contains(e.target) && e.target !== worksBtn) closeWorks();
+      if (!srcPanel.hidden && !srcPanel.contains(e.target) && e.target !== srcBtn) closeSrc();
     });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeWorks(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSrc(); });
 
-    // Year-range selects, spanning every year present in the corpus.
+    // Year-range selects.
+    const allYears = meta.years || [];
     const minYear = allYears[0], maxYear = allYears[allYears.length - 1];
     const yearOpts = allYears.map((y) => `<option value="${y}">${y}</option>`).join('');
     yearFromEl.innerHTML = yearOpts;
@@ -267,8 +293,7 @@
 
     function buildOptions() {
       const filters = {};
-      if (selectedWorks.size) filters.work = { any: [...selectedWorks] };
-      if (typeEl.value) filters.type = typeEl.value;
+      if (selectedCategories.size) filters.category = { any: [...selectedCategories] };
       const yr = yearRange();
       if (yr) filters.year = { any: yr };
       const opts = {};
@@ -280,7 +305,6 @@
     let timer;
     qEl.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(run, 180); });
     sortEl.addEventListener('change', run);
-    typeEl.addEventListener('change', run);
     yearFromEl.addEventListener('change', run);
     yearToEl.addEventListener('change', run);
     moreBtn.addEventListener('click', renderMore);
@@ -297,8 +321,6 @@
         moreBtn.style.display = 'none';
         return;
       }
-      // When browsing with no explicit sort, default to chronological order.
-      if (browsing && !opts.sort) opts.sort = { date: 'asc' };
       statusEl.textContent = browsing ? 'Loading…' : 'Searching…';
 
       const pagefind = await pagefindPromise;
@@ -330,7 +352,7 @@
       const date = m.date || '';
       const isWoG = m.type === 'WoG';
       const context = isWoG && m.question
-        ? `<p class="r-context"><span class="r-asker">${esc(m.asked_by || 'A reader')} asked:</span> ${snippetAround(m.question, queryTerms, 200)}</p>`
+        ? `<p class="r-context">${m.asked_by ? `<span class="r-asker">${esc(m.asked_by)} asked:</span> ` : ''}${snippetAround(m.question, queryTerms, 200)}</p>`
         : '';
       const answer = isWoG
         ? `<span class="r-answer-by">Wildbow:</span> ${m.answer ? snippetAround(m.answer, queryTerms, 300) : snippet(d.excerpt)}`
@@ -344,7 +366,8 @@
         </div>
         ${context}
         <p class="r-excerpt">${answer}</p>
-        <a class="r-url" href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a>
+        <a class="r-url" href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a>${m.wog_url ? `
+        <a class="r-url r-wog" href="${esc(m.wog_url)}" target="_blank" rel="noopener">· in WoG repository</a>` : ''}
       </li>`;
     }
   </script>

@@ -4,6 +4,7 @@ CLAUDE.md
 node_modules/
 data/raw/
 data/corpus/
+Spacebattles WoG Repository/
 build/
 site/pagefind/
 site/meta.json
