@@ -23,8 +23,20 @@ function sourceLabel(url) {
   if (/sufficientvelocity\.com/i.test(url)) return 'SufficientVelocity';
   if (/parahumans\.(wordpress|net)/i.test(url)) return 'Blog';
   if (/formspring/i.test(url)) return 'Formspring';
-  return 'Link';
+  if (/docs\.google|drive\.google/i.test(url)) return 'Google Docs';
+  if (/myth-weavers/i.test(url)) return 'Myth-Weavers';
+  return 'Other'; // some other site Wildbow posted on (pastebin, blogspot, etc.)
 }
+
+// Hand corrections: a few repository entries link to the wrong place (a
+// fat-fingered href with label text or a whole quote pasted into the link).
+// Keyed by record id (a stable hash of the quote) → the correct origin URL.
+const URL_FIXES = {
+  // "GG's Aura a non-factor in Amy's issues" — label text pasted as the link
+  'wog:sb:ae2f94555bd5': 'https://www.reddit.com/r/Parahumans/comments/185657e/comment/kb1od7b/',
+  // "I'm leaning toward shaker or breaker for the kid" — whole quote pasted as the link
+  'wog:sb:e336d8c3ae69': 'https://www.reddit.com/r/Parahumans/comments/5ic73i/power_this_trigger/db7crl5/?utm_source=share&utm_medium=ios_app&utm_name=iossmf&context=3',
+};
 
 // True if the node sits inside another quote block (a nested quote, not a
 // top-level repository entry).
@@ -73,24 +85,51 @@ function bbWrapperOf(node) {
   return null;
 }
 
-// Origin links the repository cites. SpaceBattles links are handled via the
-// quote's own attribution, so they're excluded here.
-const SOURCE_RE = /reddit\.com|sufficientvelocity\.com|parahumans\.(wordpress|net)|formspring|blogspot|pastebin/i;
+// Classify a link in the contributor's text:
+//   'link'     — a usable external source (reddit, SV, gdocs, myth-weavers, …).
+//                Deliberately broad so a quote beside an unusual-site link is
+//                attributed to it rather than dumped as thread-only.
+//   'deadlink' — an intended source we can't use: a dead/expiring Discord CDN
+//                attachment, or a fat-fingered href (label text or a whole quote
+//                pasted in, so the "host" has a space or no dot). It still
+//                *claims* its quote — the scan stops here rather than scavenge a
+//                neighbour's link — so the entry falls back to a repository link.
+//   null       — not a source: a non-http or SpaceBattles link (SB attribution
+//                is handled via the quote's own sourceJump).
+function linkKind(href) {
+  const m = /^https?:\/\/([^/?#]*)/i.exec(href);
+  if (!m) return null;
+  const host = m[1];
+  if (/spacebattles\.com$/i.test(host)) return null;
+  if (/\s/.test(host) || !host.includes('.')) return 'deadlink';   // malformed href
+  if (/(^|\.)cdn\.discordapp\.com$/i.test(host)) return 'deadlink'; // dead attachment
+  return 'link';
+}
 
-// In-document-order markers within a post: each top-level quote and each source
-// link. We don't descend into quotes, so a quote's own links aren't sources.
+// In-document-order markers within a post: each top-level quote, each source
+// link, and each run of contributor text. We don't descend into quotes (their
+// own links aren't sources) or into links (their anchor text isn't a label).
+// Text markers matter for attribution: a label between quotes starts a new entry.
 function markers(wrap) {
   const out = [];
   (function walk(node) {
     for (const c of node.childNodes) {
-      if (!c.tagName) continue;
-      const cls = c.getAttribute('class') || '';
-      if (c.tagName.toLowerCase() === 'blockquote' && cls.includes('bbCodeBlock--quote')) {
-        out.push({ kind: 'quote', node: c });
-        continue; // a quote's contents are not source markers
+      if (!c.tagName) {
+        const t = (c.text || '').replace(/Click to (expand|shrink)\.\.\./g, '').trim();
+        if (/[A-Za-z0-9]/.test(t)) out.push({ kind: 'text' });
+        continue;
       }
-      if (c.tagName.toLowerCase() === 'a' && SOURCE_RE.test(c.getAttribute('href') || '')) {
-        out.push({ kind: 'link', href: c.getAttribute('href') });
+      const tag = c.tagName.toLowerCase();
+      const cls = c.getAttribute('class') || '';
+      if (tag === 'blockquote' && cls.includes('bbCodeBlock--quote')) {
+        out.push({ kind: 'quote', node: c });
+        continue;
+      }
+      if (tag === 'a') {
+        const href = c.getAttribute('href') || '';
+        const kind = linkKind(href);
+        if (kind) out.push({ kind, href });
+        continue;
       }
       walk(c);
     }
@@ -98,16 +137,32 @@ function markers(wrap) {
   return out;
 }
 
-// The source link nearest a quote within its post, not separated from it by
-// another quote — so each quote keeps its own source even in multi-quote posts.
+// The source link for a quote within its post. A link before the quote
+// attributes it; the backward scan crosses consecutive quotes (a link followed
+// by several quotes with nothing between them are all from that link). It stops
+// only when contributor text sits *between two quotes* — that's a label starting
+// a new entry. Text between the link and the first quote is that entry's own
+// framing ("Wildbow on Reddit:") and is fine. The forward scan (a link right
+// after the quote) never crosses another quote.
 function sourceLinkFor(bq) {
   const wrap = bbWrapperOf(bq);
   if (!wrap) return '';
   const ms = markers(wrap);
   const idx = ms.findIndex((m) => m.node === bq);
   if (idx < 0) return '';
-  for (let i = idx - 1; i >= 0; i--) { if (ms[i].kind === 'quote') break; if (ms[i].kind === 'link') return ms[i].href; }
-  for (let i = idx + 1; i < ms.length; i++) { if (ms[i].kind === 'quote') break; if (ms[i].kind === 'link') return ms[i].href; }
+  let pendingText = false; // text seen in the current gap (resets at each quote)
+  for (let i = idx - 1; i >= 0; i--) {
+    const m = ms[i];
+    if (m.kind === 'link') return m.href;
+    if (m.kind === 'deadlink') return '';   // source claimed but unusable → repository link
+    if (m.kind === 'text') { pendingText = true; continue; }
+    if (m.kind === 'quote') { if (pendingText) break; pendingText = false; }
+  }
+  for (let i = idx + 1; i < ms.length; i++) {
+    if (ms[i].kind === 'quote') break;
+    if (ms[i].kind === 'deadlink') return '';
+    if (ms[i].kind === 'link') return ms[i].href;
+  }
   return '';
 }
 
@@ -154,17 +209,20 @@ async function main() {
       const origin = sourceLinkFor(bq);
       const pid = postId(bq);
       const wogPost = pid ? `${THREAD}/post-${pid}` : THREAD; // where it's compiled
+      const id = `wog:sb:${createHash('sha1').update(key).digest('hex').slice(0, 12)}`;
 
-      // Primary origin: a cited external source; else Wildbow's own post in
-      // *another* SB thread; else the WoG repository thread itself (a
-      // compilation, not a Wildbow post — a distinct "WoG Thread" source).
+      // Primary origin: a hand-corrected link (the repository got a few wrong);
+      // else a cited external source; else Wildbow's own post in *another* SB
+      // thread; else the WoG repository thread itself (a compilation, not a
+      // Wildbow post — a distinct "WoG Thread" source).
       let url, source;
-      if (jumpHref && !/294448/.test(jumpHref)) { url = jumpHref; source = 'SpaceBattles'; }
+      if (URL_FIXES[id]) { url = URL_FIXES[id]; source = sourceLabel(url); }
+      else if (jumpHref && !/294448/.test(jumpHref)) { url = jumpHref; source = 'SpaceBattles'; }
       else if (origin) { url = origin; source = sourceLabel(origin); }
       else { url = wogPost; source = 'WoG Thread'; }
 
       records.push({
-        id: `wog:sb:${createHash('sha1').update(key).digest('hex').slice(0, 12)}`,
+        id,
         type: 'WoG',
         source,
         work: 'Worm',

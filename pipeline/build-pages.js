@@ -22,7 +22,11 @@ function categoriesOf(rec) {
   const type = rec.type || 'Fiction';
   if (type !== 'WoG') return [rec.work];
   if (rec.source === 'Comment') return rec.cited ? [`Comment:${rec.work}`, 'WoGThread', 'CitedComment'] : [`Comment:${rec.work}`];
-  const origin = { Reddit: 'Reddit', SufficientVelocity: 'SufficientVelocity', SpaceBattles: 'SpaceBattles' }[rec.source] || 'WoGThreadOnly';
+  // Known origins keep their own bucket; a cited link to some other external
+  // site (gdocs, myth-weavers, …) is "Other"; only genuinely linkless entries
+  // (an IIRC/PM archived in the thread itself) are "WoGThreadOnly".
+  const KNOWN = { Reddit: 'Reddit', SufficientVelocity: 'SufficientVelocity', SpaceBattles: 'SpaceBattles' };
+  const origin = KNOWN[rec.source] || (rec.source === 'WoG Thread' ? 'WoGThreadOnly' : 'Other');
   return [origin, 'WoGThread'];
 }
 
@@ -154,7 +158,7 @@ async function main() {
 
   const ORDER = ['Worm', 'Pact', 'Twig', 'Ward', 'Pale', 'Claw', 'Seek'];
   const byWork = (a, b) => ORDER.indexOf(a[0]) - ORDER.indexOf(b[0]);
-  const ORIGIN_ORDER = ['CitedComment', 'Reddit', 'SufficientVelocity', 'SpaceBattles', 'WoGThreadOnly'];
+  const ORIGIN_ORDER = ['CitedComment', 'Reddit', 'SufficientVelocity', 'SpaceBattles', 'Other', 'WoGThreadOnly'];
   const meta = {
     fiction: [...fiction].sort(byWork),
     wogComment: [...wogComment].sort(byWork),
