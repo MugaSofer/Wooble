@@ -7,6 +7,11 @@ data/corpus/
 data/wog-batches/
 data/wog-scores-parts/
 data/wog-scores.json
+# Sonnet thread-attribution pass: keep the verified patch (wog-thread-fixes.json),
+# ignore the regenerable intermediates.
+data/wog-thread-batches/
+data/wog-thread-parts/
+data/wog-thread-context.json
 Spacebattles WoG Repository/
 build/
 site/pagefind/

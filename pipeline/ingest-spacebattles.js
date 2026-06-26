@@ -36,6 +36,9 @@ const URL_FIXES = {
   'wog:sb:ae2f94555bd5': 'https://www.reddit.com/r/Parahumans/comments/185657e/comment/kb1od7b/',
   // "I'm leaning toward shaker or breaker for the kid" — whole quote pasted as the link
   'wog:sb:e336d8c3ae69': 'https://www.reddit.com/r/Parahumans/comments/5ic73i/power_this_trigger/db7crl5/?utm_source=share&utm_medium=ios_app&utm_name=iossmf&context=3',
+  // "Nine hours fresh, from Reddit: What would have happened to Taylor…" — the
+  // repository pasted the thread title but no link; source found by hand.
+  'wog:sb:eff8404fef66': 'https://www.reddit.com/r/Parahumans/comments/2szsy2/comment/cnuqjfd/',
 };
 
 // True if the node sits inside another quote block (a nested quote, not a
@@ -55,6 +58,17 @@ function postId(node) {
     if (d && d.startsWith('post-')) return d.slice(5);
   }
   return null;
+}
+
+// The author of the post containing this node (XenForo puts it on the message
+// article as data-author). When it's Wildbow, the quote is his own WoG post in
+// the thread — a primary SpaceBattles source, not a fan's compilation of one.
+function postAuthor(node) {
+  for (let p = node.parentNode; p; p = p.parentNode) {
+    const a = p.getAttribute && p.getAttribute('data-author');
+    if (a) return a;
+  }
+  return '';
 }
 
 // The contributor's framing text immediately before a quote (e.g. "Wildbow, on
@@ -178,6 +192,13 @@ async function main() {
     process.exit(1);
   }
 
+  // Sonnet-derived source attributions for entries the deterministic scan left
+  // as thread-only (id -> {source, url}), verified before being written here:
+  // Blog links checked against our scraped comments, URLs confirmed present in
+  // the source transcript, dead/Discord links rejected.
+  let threadFixes = {};
+  try { threadFixes = JSON.parse(await readFile('data/wog-thread-fixes.json', 'utf8')); } catch { /* none yet */ }
+
   const seen = new Set();
   const records = [];
 
@@ -212,13 +233,16 @@ async function main() {
       const id = `wog:sb:${createHash('sha1').update(key).digest('hex').slice(0, 12)}`;
 
       // Primary origin: a hand-corrected link (the repository got a few wrong);
-      // else a cited external source; else Wildbow's own post in *another* SB
-      // thread; else the WoG repository thread itself (a compilation, not a
-      // Wildbow post — a distinct "WoG Thread" source).
+      // else a cited external source; else — if Wildbow authored the post — his
+      // own WoG post in this thread (a SpaceBattles primary source); else
+      // Wildbow's post in *another* SB thread (via sourceJump); else the WoG
+      // repository thread itself (a fan compilation — a distinct "WoG Thread").
       let url, source;
       if (URL_FIXES[id]) { url = URL_FIXES[id]; source = sourceLabel(url); }
+      else if (threadFixes[id]) { url = threadFixes[id].url; source = threadFixes[id].source; }
       else if (jumpHref && !/294448/.test(jumpHref)) { url = jumpHref; source = 'SpaceBattles'; }
       else if (origin) { url = origin; source = sourceLabel(origin); }
+      else if (/wildbow/i.test(postAuthor(bq))) { url = wogPost; source = 'SpaceBattles'; }
       else { url = wogPost; source = 'WoG Thread'; }
 
       records.push({
