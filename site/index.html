@@ -342,10 +342,12 @@
       if (selectedCategories.size) filters.category = { any: [...selectedCategories] };
       const yr = yearRange();
       if (yr) filters.year = { any: yr };
+      // `refined` (browse-on-empty) reflects an explicit source/year/sort choice.
+      const refined = Object.keys(filters).length > 0 || !!sortEl.value;
       const opts = {};
       if (Object.keys(filters).length) opts.filters = filters;
       if (sortEl.value) opts.sort = { date: sortEl.value };
-      return { opts, refined: Object.keys(filters).length > 0 || !!sortEl.value };
+      return { opts, refined };
     }
 
     let timer;

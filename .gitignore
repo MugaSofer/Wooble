@@ -4,6 +4,9 @@ CLAUDE.md
 node_modules/
 data/raw/
 data/corpus/
+data/wog-batches/
+data/wog-scores-parts/
+data/wog-scores.json
 Spacebattles WoG Repository/
 build/
 site/pagefind/

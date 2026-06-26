@@ -30,7 +30,6 @@ function pageHtml(rec) {
   const type = rec.type || 'Fiction';
   const year = rec.date ? rec.date.slice(0, 4) : '';
   const categories = categoriesOf(rec);
-
   // WoG indexes the question (context) and Wildbow's answer together; fiction
   // indexes the chapter prose. Extra meta lets the UI render WoG distinctly.
   let body, extraMeta = '';
@@ -117,7 +116,12 @@ async function main() {
     records.push(r);
   }
 
-  let total = 0, skipped = 0;
+  // Attach cached Haiku WoG-relevance scores to blog comments.
+  let scores = {};
+  try { scores = JSON.parse(await readFile('data/wog-scores.json', 'utf8')); } catch { /* not scored yet */ }
+  for (const r of records) if (r.type === 'WoG' && r.source === 'Comment' && scores[r.id]) r.score = scores[r.id];
+
+  let total = 0, skipped = 0, droppedNonCanon = 0;
   const years = new Set();
   const fiction = new Map();      // work -> fiction chapter count
   const wogComment = new Map();   // work -> blog-comment WoG count
@@ -127,6 +131,11 @@ async function main() {
   for (const rec of records) {
     const isWoG = (rec.type || 'Fiction') === 'WoG';
     if (isWoG ? rec.wordCount === 0 : rec.wordCount < MIN_WORDS) { skipped++; continue; }
+    // Serve curated WoG in full (fiction, repository quotes, and any cited blog
+    // comment). The raw blog-comment dump is the only noisy source, so it's
+    // filtered to Haiku's "canon" tag; everything else Haiku tagged stays in the
+    // archives (corpus + wog-scores.json) but isn't served.
+    if (isWoG && rec.source === 'Comment' && !rec.cited && rec.score?.category !== 'canon') { droppedNonCanon++; continue; }
     const dir = join(BUILD_DIR, rec.workSlug);
     await mkdir(dir, { recursive: true });
     const slug = rec.id.split(':').slice(1).join(':').replace(/[^a-z0-9-]+/gi, '-');
@@ -156,7 +165,7 @@ async function main() {
   await mkdir('site', { recursive: true });
   await writeFile(join('site', 'meta.json'), JSON.stringify(meta));
 
-  console.log(`Wrote ${total} pages to ${BUILD_DIR}/ (skipped ${skipped} short).`);
+  console.log(`Wrote ${total} pages to ${BUILD_DIR}/ (skipped ${skipped} short, ${droppedNonCanon} non-canon comments archived).`);
   console.log(`meta.json: ${meta.fiction.length} works, ${meta.wogComment.length} comment-works, WoG-thread ${threadTotal} (${meta.wogThread.origins.map((o) => o.join(':')).join(', ')}), years ${meta.years[0]}–${meta.years.at(-1)}.`);
 }
 
