@@ -22,6 +22,12 @@ function categoriesOf(rec) {
   const type = rec.type || 'Fiction';
   if (type !== 'WoG') return [rec.work];
   if (rec.source === 'Comment') return rec.cited ? [`Comment:${rec.work}`, 'WoGThread', 'CitedComment'] : [`Comment:${rec.work}`];
+  // The bulk Reddit pull is its own WoG source, grouped by subreddit. (Its
+  // `cited` flag only exempts it from the canon gate + adds the repository link.)
+  if (rec.source === 'Reddit' && String(rec.id).startsWith('wog:reddit:')) {
+    const base = ['RedditWoG', `Reddit:${rec.subreddit}`];
+    return rec.cited ? [...base, 'WoGThread', 'Reddit'] : base; // cited = also quoted in the WoG thread
+  }
   // Known origins keep their own bucket; a cited link to some other external
   // site (gdocs, myth-weavers, …) is "Other"; only genuinely linkless entries
   // (an IIRC/PM archived in the thread itself) are "WoGThreadOnly".
@@ -126,8 +132,14 @@ async function main() {
     if (hits.length > 1 && q.length >= 120) return hits[0].rec;
     return null;
   };
+  // Bulk Reddit comments indexed by their reddit comment id, so a repository
+  // quote of the same comment merges into the scraped version (no duplicate).
+  const bulkReddit = new Map();
+  for (const r of all) if (typeof r.id === 'string' && r.id.startsWith('wog:reddit:')) bulkReddit.set(r.id.slice(11), r);
+
   const records = [];
   const textMerged = [];
+  let redditMerged = 0;
   for (const r of all) {
     const fromThread = typeof r.id === 'string' && r.id.startsWith('wog:sb:');
     if (fromThread && r.source === 'Blog') {
@@ -139,33 +151,42 @@ async function main() {
       const hit = matchComment(r.text); // no link given — match the quote verbatim
       if (hit) { hit.cited = true; hit.wogUrl = r.wogUrl || r.url; textMerged.push([r.id, hit.url]); continue; }
       r.cited = true;
+    } else if (fromThread && r.source === 'Reddit') {
+      // Same reddit comment already in the bulk pull → merge into it (no dup).
+      const cid = String(r.url || '').split(/[/?#]/).find((s) => bulkReddit.has(s));
+      const hit = cid && bulkReddit.get(cid);
+      if (hit) { hit.cited = true; hit.wogUrl = r.wogUrl || r.url; redditMerged++; continue; }
+      r.cited = true;
     } else if (fromThread) {
       r.cited = true; // every other repository entry is "in the thread"
     }
     records.push(r);
   }
   if (textMerged.length) console.log(`Verbatim-matched ${textMerged.length} linkless thread quotes to scraped comments.`);
+  if (redditMerged) console.log(`Merged ${redditMerged} repository reddit quotes into the bulk pull.`);
 
   // Attach cached Haiku WoG-relevance scores to blog comments.
   let scores = {};
   try { scores = JSON.parse(await readFile('data/wog-scores.json', 'utf8')); } catch { /* not scored yet */ }
-  for (const r of records) if (r.type === 'WoG' && r.source === 'Comment' && scores[r.id]) r.score = scores[r.id];
+  for (const r of records) if (r.type === 'WoG' && (r.source === 'Comment' || r.source === 'Reddit') && scores[r.id]) r.score = scores[r.id];
 
   let total = 0, skipped = 0, droppedNonCanon = 0;
   const years = new Set();
   const fiction = new Map();      // work -> fiction chapter count
   const wogComment = new Map();   // work -> blog-comment WoG count
+  const redditWoG = new Map();    // subreddit -> served bulk-reddit WoG count
   const threadOrigins = new Map(); // origin -> count, within the WoG thread
   let threadTotal = 0;
 
   for (const rec of records) {
     const isWoG = (rec.type || 'Fiction') === 'WoG';
     if (isWoG ? rec.wordCount === 0 : rec.wordCount < MIN_WORDS) { skipped++; continue; }
-    // Serve curated WoG in full (fiction, repository quotes, and any cited blog
-    // comment). The raw blog-comment dump is the only noisy source, so it's
-    // filtered to Haiku's "canon" tag; everything else Haiku tagged stays in the
-    // archives (corpus + wog-scores.json) but isn't served.
-    if (isWoG && rec.source === 'Comment' && !rec.cited && rec.score?.category !== 'canon') { droppedNonCanon++; continue; }
+    // Serve curated WoG in full (fiction, repository quotes, cited entries). The
+    // Haiku-classified dumps — blog comments and the bulk Reddit pull — are the
+    // noisy sources, so they're filtered to the "canon" tag; everything else
+    // Haiku tagged stays in the archives (corpus + wog-scores.json), unserved.
+    const haikuGated = rec.source === 'Comment' || (rec.source === 'Reddit' && String(rec.id).startsWith('wog:reddit:'));
+    if (isWoG && haikuGated && !rec.cited && rec.score?.category !== 'canon') { droppedNonCanon++; continue; }
     const dir = join(BUILD_DIR, rec.workSlug);
     await mkdir(dir, { recursive: true });
     const slug = rec.id.split(':').slice(1).join(':').replace(/[^a-z0-9-]+/gi, '-');
@@ -174,10 +195,11 @@ async function main() {
     if (rec.date) years.add(rec.date.slice(0, 4));
     if (!isWoG) { fiction.set(rec.work, (fiction.get(rec.work) ?? 0) + 1); continue; }
     if (rec.source === 'Comment') wogComment.set(rec.work, (wogComment.get(rec.work) ?? 0) + 1);
+    if (rec.source === 'Reddit' && String(rec.id).startsWith('wog:reddit:')) redditWoG.set(rec.subreddit, (redditWoG.get(rec.subreddit) ?? 0) + 1);
     const cats = categoriesOf(rec);
     if (cats.includes('WoGThread')) {
       threadTotal++;
-      const origin = cats.find((c) => c !== 'WoGThread' && !c.startsWith('Comment:'));
+      const origin = cats.find((c) => c !== 'WoGThread' && c !== 'RedditWoG' && !c.startsWith('Comment:') && !c.startsWith('Reddit:'));
       if (origin) threadOrigins.set(origin, (threadOrigins.get(origin) ?? 0) + 1);
     }
   }
@@ -185,9 +207,11 @@ async function main() {
   const ORDER = ['Worm', 'Pact', 'Twig', 'Ward', 'Pale', 'Claw', 'Seek'];
   const byWork = (a, b) => ORDER.indexOf(a[0]) - ORDER.indexOf(b[0]);
   const ORIGIN_ORDER = ['CitedComment', 'Reddit', 'SufficientVelocity', 'SpaceBattles', 'Other', 'WoGThreadOnly'];
+  const SUB_ORDER = ['Parahumans', 'Weaverdice', 'whowouldwin', 'WormFanfic'];
   const meta = {
     fiction: [...fiction].sort(byWork),
     wogComment: [...wogComment].sort(byWork),
+    reddit: [...redditWoG].sort((a, b) => SUB_ORDER.indexOf(a[0]) - SUB_ORDER.indexOf(b[0])),
     wogThread: { total: threadTotal, origins: [...threadOrigins].sort((a, b) => ORIGIN_ORDER.indexOf(a[0]) - ORIGIN_ORDER.indexOf(b[0])) },
     years: [...years].sort(),
     items: total,
@@ -196,7 +220,7 @@ async function main() {
   await writeFile(join('site', 'meta.json'), JSON.stringify(meta));
 
   console.log(`Wrote ${total} pages to ${BUILD_DIR}/ (skipped ${skipped} short, ${droppedNonCanon} non-canon comments archived).`);
-  console.log(`meta.json: ${meta.fiction.length} works, ${meta.wogComment.length} comment-works, WoG-thread ${threadTotal} (${meta.wogThread.origins.map((o) => o.join(':')).join(', ')}), years ${meta.years[0]}–${meta.years.at(-1)}.`);
+  console.log(`meta.json: ${meta.fiction.length} works, ${meta.wogComment.length} comment-works, reddit [${meta.reddit.map((r) => r.join(':')).join(', ')}], WoG-thread ${threadTotal} (${meta.wogThread.origins.map((o) => o.join(':')).join(', ')}), years ${meta.years[0]}–${meta.years.at(-1)}.`);
 }
 
 main().catch((e) => {

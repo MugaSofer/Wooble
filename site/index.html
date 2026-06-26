@@ -242,6 +242,13 @@
           ...((meta.wogComment || []).length
             ? [{ label: 'Blog comments', children: meta.wogComment.map(([w, c]) => ({ label: w, count: c, cat: `Comment:${w}` })) }]
             : []),
+          ...((meta.reddit || []).length
+            ? [{
+                label: 'Reddit', cat: 'RedditWoG',
+                count: (meta.reddit || []).reduce((s, [, c]) => s + c, 0),
+                children: meta.reddit.map(([sub, c]) => ({ label: 'r/' + sub, count: c, cat: `Reddit:${sub}` })),
+              }]
+            : []),
           ...(wt.total
             ? [{
                 label: 'WoG Thread', cat: 'WoGThread', count: wt.total,
