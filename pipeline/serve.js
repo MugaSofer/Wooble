@@ -26,7 +26,10 @@ createServer(async (req, res) => {
     // Prevent path traversal outside ROOT.
     const filePath = join(ROOT, normalize(path).replace(/^(\.\.[/\\])+/, ''));
     const body = await readFile(filePath);
-    res.writeHead(200, { 'Content-Type': TYPES[extname(filePath)] ?? 'application/octet-stream' });
+    res.writeHead(200, {
+      'Content-Type': TYPES[extname(filePath)] ?? 'application/octet-stream',
+      'Cache-Control': 'no-cache', // always revalidate so edits show up on a normal refresh
+    });
     res.end(body);
   } catch {
     res.writeHead(404, { 'Content-Type': 'text/plain' });

@@ -21,7 +21,7 @@ const esc = (s) =>
 function categoriesOf(rec) {
   const type = rec.type || 'Fiction';
   if (type !== 'WoG') return [rec.work];
-  if (rec.source === 'Comment') return rec.cited ? [`Comment:${rec.work}`, 'WoGThread'] : [`Comment:${rec.work}`];
+  if (rec.source === 'Comment') return rec.cited ? [`Comment:${rec.work}`, 'WoGThread', 'CitedComment'] : [`Comment:${rec.work}`];
   const origin = { Reddit: 'Reddit', SufficientVelocity: 'SufficientVelocity', SpaceBattles: 'SpaceBattles' }[rec.source] || 'WoGThreadOnly';
   return [origin, 'WoGThread'];
 }
@@ -145,7 +145,7 @@ async function main() {
 
   const ORDER = ['Worm', 'Pact', 'Twig', 'Ward', 'Pale', 'Claw', 'Seek'];
   const byWork = (a, b) => ORDER.indexOf(a[0]) - ORDER.indexOf(b[0]);
-  const ORIGIN_ORDER = ['WoGThreadOnly', 'Reddit', 'SufficientVelocity', 'SpaceBattles'];
+  const ORIGIN_ORDER = ['CitedComment', 'Reddit', 'SufficientVelocity', 'SpaceBattles', 'WoGThreadOnly'];
   const meta = {
     fiction: [...fiction].sort(byWork),
     wogComment: [...wogComment].sort(byWork),
