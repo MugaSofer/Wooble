@@ -99,14 +99,35 @@ async function main() {
   // Merge: a blog comment cited in the SpaceBattles WoG thread is already in our
   // corpus (we scraped all of Wildbow's comments), so enrich the scraped record
   // with the repository link and a `cited` flag rather than keep a duplicate.
+  // We match two ways: by the cited #comment-N link, and — for thread entries
+  // where the contributor gave no link — by the quote text itself, since an
+  // identical scraped comment IS the source.
+  const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
   const commentById = new Map();
+  const commentTexts = [];
   for (const r of all) {
     if (r.type === 'WoG' && r.source === 'Comment') {
       const m = String(r.url || '').match(/#comment-(\d+)/);
       if (m) commentById.set(m[1], r);
+      const n = norm(r.text);
+      if (n.length >= 50) commentTexts.push({ n, rec: r });
     }
   }
+  // A thread quote matches a scraped comment that contains its first 200
+  // normalized chars verbatim. A unique hit is accepted even for short quotes;
+  // a short quote with several hits is ambiguous (a generic phrase) and skipped,
+  // while a long quote with several hits is just Wildbow repeating himself.
+  const matchComment = (text) => {
+    const q = norm(text);
+    if (q.length < 40) return null;
+    const probe = q.slice(0, 200);
+    const hits = commentTexts.filter((c) => c.n.includes(probe));
+    if (hits.length === 1) return hits[0].rec;
+    if (hits.length > 1 && q.length >= 120) return hits[0].rec;
+    return null;
+  };
   const records = [];
+  const textMerged = [];
   for (const r of all) {
     const fromThread = typeof r.id === 'string' && r.id.startsWith('wog:sb:');
     if (fromThread && r.source === 'Blog') {
@@ -114,11 +135,16 @@ async function main() {
       const hit = m && commentById.get(m[1]);
       if (hit) { hit.cited = true; hit.wogUrl = r.wogUrl; continue; } // merge & drop the dup
       r.source = 'Comment'; r.cited = true; // unmatched citation → a cited Worm comment
+    } else if (fromThread && r.source === 'WoG Thread') {
+      const hit = matchComment(r.text); // no link given — match the quote verbatim
+      if (hit) { hit.cited = true; hit.wogUrl = r.wogUrl || r.url; textMerged.push([r.id, hit.url]); continue; }
+      r.cited = true;
     } else if (fromThread) {
       r.cited = true; // every other repository entry is "in the thread"
     }
     records.push(r);
   }
+  if (textMerged.length) console.log(`Verbatim-matched ${textMerged.length} linkless thread quotes to scraped comments.`);
 
   // Attach cached Haiku WoG-relevance scores to blog comments.
   let scores = {};
