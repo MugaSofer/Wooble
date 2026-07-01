@@ -17,9 +17,11 @@
       display: flex; flex-direction: column; align-items: center;
     }
     header { text-align: center; margin: 6vh 1rem 1.25rem; }
-    /* Pin the logo font (don't inherit system-ui, which becomes One UI's narrow
-       font on Samsung): Segoe UI on Windows, Roboto on Android, else Helvetica/Arial. */
-    .logo { font-size: clamp(2.8rem, 9vw, 4.5rem); font-weight: 800; letter-spacing: -2px; font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    /* Self-hosted Poppins ExtraBold: big & blocky with circular Os, so the
+       yellow/red Os read as the Parahumans/Otherverse circle symbols — and it's
+       identical on every device (system fonts varied, e.g. narrow on Samsung). */
+    @font-face { font-family: 'Poppins'; font-style: normal; font-weight: 900; font-display: swap; src: url(./fonts/poppins-900.woff2) format('woff2'); }
+    .logo { font-size: clamp(3.2rem, 10vw, 5.2rem); font-weight: 900; letter-spacing: -1px; font-family: 'Poppins', "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
     .logo span { color: var(--accent); }
 	.logo span2 { color: var(--accent2); }
     .tag { color: var(--muted); margin-top: .25rem; font-size: 1.05rem; }
