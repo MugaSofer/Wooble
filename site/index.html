@@ -17,7 +17,9 @@
       display: flex; flex-direction: column; align-items: center;
     }
     header { text-align: center; margin: 6vh 1rem 1.25rem; }
-    .logo { font-size: clamp(2.8rem, 9vw, 4.5rem); font-weight: 800; letter-spacing: -2px; }
+    /* Pin the logo font (don't inherit system-ui, which becomes One UI's narrow
+       font on Samsung): Segoe UI on Windows, Roboto on Android, else Helvetica/Arial. */
+    .logo { font-size: clamp(2.8rem, 9vw, 4.5rem); font-weight: 800; letter-spacing: -2px; font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
     .logo span { color: var(--accent); }
 	.logo span2 { color: var(--accent2); }
     .tag { color: var(--muted); margin-top: .25rem; font-size: 1.05rem; }
@@ -27,7 +29,7 @@
       background: var(--panel); border: 1px solid var(--line); border-radius: 999px; outline: none;
     }
     #q:focus { border-color: var(--accent); }
-    .controls { position: relative; display: flex; flex-wrap: wrap; gap: 1rem 1.5rem; margin: .9rem .2rem .2rem; font-size: .85rem; color: var(--muted); }
+    .controls { position: relative; display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem 1.5rem; margin: .9rem .2rem .2rem; font-size: .85rem; color: var(--muted); }
     .controls > label { display: inline-flex; align-items: center; gap: .4rem; }
     select, .dd-btn {
       color: var(--ink); background: var(--panel); border: 1px solid var(--line);
@@ -151,11 +153,6 @@
           <div class="dd-panel dd-sources" id="srcPanel" hidden></div>
         </span>
       </label>
-      <label>Years
-        <select id="yearFrom"></select>
-        <span>–</span>
-        <select id="yearTo"></select>
-      </label>
       <label>Sort
         <select id="sort">
           <option value="">Best match</option>
@@ -168,6 +165,11 @@
           <option value="all">All in page</option>
           <option value="one">Best in page</option>
         </select>
+      </label>
+      <label>Years
+        <select id="yearFrom"></select>
+        <span>–</span>
+        <select id="yearTo"></select>
       </label>
     </div>
     <div id="status"></div>
