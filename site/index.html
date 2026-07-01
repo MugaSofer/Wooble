@@ -31,6 +31,11 @@
     #q:focus { border-color: var(--accent); }
     .controls { position: relative; display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem 1.5rem; margin: .9rem .2rem .2rem; font-size: .85rem; color: var(--muted); }
     .controls > label { display: inline-flex; align-items: center; gap: .4rem; }
+    /* Phones: tighten control spacing/padding so they pack in more evenly. */
+    @media (max-width: 480px) {
+      .controls { gap: .5rem .8rem; }
+      .controls select, .controls .dd-btn { padding: .2rem .45rem; }
+    }
     select, .dd-btn {
       color: var(--ink); background: var(--panel); border: 1px solid var(--line);
       border-radius: 8px; padding: .25rem .5rem; font: inherit; font-size: .85rem;
@@ -160,16 +165,16 @@
           <option value="asc">Oldest first</option>
         </select>
       </label>
+	   <label>Years
+        <select id="yearFrom"></select>
+        <span>–</span>
+        <select id="yearTo"></select>
+      </label>
       <label>Show
         <select id="matches">
           <option value="all">All in page</option>
           <option value="one">Best in page</option>
         </select>
-      </label>
-      <label>Years
-        <select id="yearFrom"></select>
-        <span>–</span>
-        <select id="yearTo"></select>
       </label>
     </div>
     <div id="status"></div>
