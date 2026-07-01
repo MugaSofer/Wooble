@@ -7,7 +7,7 @@
   <style>
     :root {
       --bg: #0f1115; --panel: #171a21; --ink: #e8eaed; --muted: #9aa0aa;
-      --accent: #ff6b6b; --line: #2a2f3a;
+      --accent: #E95D5D; --accent2: #E9D45D; --line: #2a2f3a;
     }
     * { box-sizing: border-box; }
     body {
@@ -18,6 +18,7 @@
     header { text-align: center; margin: 6vh 1rem 1.25rem; }
     .logo { font-size: clamp(2.8rem, 9vw, 4.5rem); font-weight: 800; letter-spacing: -2px; }
     .logo span { color: var(--accent); }
+	.logo span2 { color: var(--accent2); }
     .tag { color: var(--muted); margin-top: .25rem; font-size: 1.05rem; }
     main { width: min(720px, 92vw); padding-bottom: 4rem; }
     #q {
@@ -99,7 +100,7 @@
 </head>
 <body>
   <header>
-    <div class="logo">Wo<span>o</span>ble</div>
+    <div class="logo">W<span2>o</span2><span>o</span>ble</div>
     <div class="tag">Search across Wildbow's web serials.</div>
   </header>
 
@@ -125,6 +126,12 @@
           <option value="asc">Oldest first</option>
         </select>
       </label>
+      <label>Show
+        <select id="matches">
+          <option value="all">All in page</option>
+          <option value="one">Best in page</option>
+        </select>
+      </label>
     </div>
     <div id="status"></div>
     <ol id="results"></ol>
@@ -133,8 +140,8 @@
 
   <footer>
     Wooble is an unofficial fan-made finder. It shows snippets and links you
-    straight to the original chapters — all stories are ©
-    <a href="https://www.patreon.com/Wildbow/about">Wildbow</a>.
+    straight to the original chapters — all stories are © <a href="https://www.patreon.com/Wildbow/about">Wildbow</a>. <br>
+	<a href="https://www.patreon.com/Wildbow/about">Support Wildbow</a> - <a href="https://ko-fi.com/mugasofer">Support This Site</a> - <a href="https://github.com/MugaSofer/Wooble/">GitHub</a>
   </footer>
 
   <script type="module">
@@ -186,6 +193,7 @@
     const statusEl = document.getElementById('status');
     const resultsEl = document.getElementById('results');
     const moreBtn = document.getElementById('more');
+    const matchesEl = document.getElementById('matches');
 
     const selectedCategories = new Set();
     const PAGE = 10;
@@ -363,6 +371,7 @@
     yearFromEl.addEventListener('change', run);
     yearToEl.addEventListener('change', run);
     moreBtn.addEventListener('click', renderMore);
+    matchesEl.addEventListener('change', () => { if (pending) { resultsEl.innerHTML = ''; shown = 0; renderMore(); } });
 
     async function run() {
       const query = qEl.value.trim();
@@ -399,6 +408,32 @@
       moreBtn.style.display = shown < pending.length ? 'block' : 'none';
     }
 
+    // Build multiple snippets from a full text: a window around each distinct
+    // query-term hit (nearby hits merged), for the "all matches in each result" mode.
+    function multiSnippets(text, terms, { max = 6, radius = 130 } = {}) {
+      text = String(text ?? '');
+      const valid = terms.filter((t) => t.length >= 2);
+      if (!valid.length || !text) return [];
+      const low = text.toLowerCase();
+      const hits = [];
+      for (const t of valid) {
+        const tl = t.toLowerCase();
+        for (let i = low.indexOf(tl); i >= 0; i = low.indexOf(tl, i + tl.length)) hits.push(i);
+      }
+      if (!hits.length) return [];
+      hits.sort((a, b) => a - b);
+      const centers = [];
+      for (const h of hits) if (!centers.length || h - centers[centers.length - 1] > radius) centers.push(h);
+      return centers.slice(0, max).map((pos) => {
+        const lo = Math.max(0, pos - Math.floor(radius / 2));
+        const hi = Math.min(text.length, pos + Math.floor(radius * 1.6));
+        let s = text.slice(lo, hi);
+        if (lo > 0) s = s.replace(/^\S*\s+/, '');
+        if (hi < text.length) s = s.replace(/\s+\S*$/, '');
+        return (lo > 0 ? '…' : '') + highlight(s, valid) + (hi < text.length ? '…' : '');
+      });
+    }
+
     function card(d) {
       const m = d.meta || {};
       const url = m.url || d.url;
@@ -409,9 +444,21 @@
       const context = isWoG && m.question
         ? `<p class="r-context">${m.asked_by ? `<span class="r-asker">${esc(m.asked_by)} asked:</span> ` : ''}${snippetAround(m.question, queryTerms, 200)}</p>`
         : '';
-      const answer = isWoG
-        ? `<span class="r-answer-by">Wildbow:</span> ${m.answer ? snippetAround(m.answer, queryTerms, 300) : snippet(d.excerpt)}`
-        : snippet(d.excerpt);
+      // "All in each result" → a snippet per matching passage (fiction from the
+      // full chapter text, WoG from Wildbow's answer); else the single best excerpt.
+      const multi = matchesEl.value === 'all' && queryTerms.length > 0;
+      let excerptHtml;
+      if (isWoG) {
+        const snips = multi ? multiSnippets(m.answer, queryTerms) : [];
+        excerptHtml = snips.length
+          ? snips.map((s, i) => `<p class="r-excerpt">${i === 0 ? '<span class="r-answer-by">Wildbow:</span> ' : ''}${s}</p>`).join('')
+          : `<p class="r-excerpt"><span class="r-answer-by">Wildbow:</span> ${m.answer ? snippetAround(m.answer, queryTerms, 300) : snippet(d.excerpt)}</p>`;
+      } else {
+        const snips = multi ? multiSnippets(d.content, queryTerms) : [];
+        excerptHtml = snips.length
+          ? snips.map((s) => `<p class="r-excerpt">${s}</p>`).join('')
+          : `<p class="r-excerpt">${snippet(d.excerpt)}</p>`;
+      }
       return `<li class="result">
         <div class="r-head">
           <a class="r-title" href="${esc(url)}" target="_blank" rel="noopener">${esc(title)}</a>
@@ -420,7 +467,7 @@
           ${date ? `<span class="r-date">${esc(date)}</span>` : ''}
         </div>
         ${context}
-        <p class="r-excerpt">${answer}</p>
+        ${excerptHtml}
         <a class="r-url" href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a>${m.wog_url ? `
         <a class="r-url r-wog" href="${esc(m.wog_url)}" target="_blank" rel="noopener">· in WoG repository</a>` : ''}
       </li>`;
