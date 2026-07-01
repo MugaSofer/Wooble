@@ -8,6 +8,7 @@
     :root {
       --bg: #0f1115; --panel: #171a21; --ink: #e8eaed; --muted: #9aa0aa;
       --accent: #E95D5D; --accent2: #E9D45D; --line: #2a2f3a;
+      --c-green: #6bcb77; --c-blue: #5d9cec; --c-purple: #b48ce8;
     }
     * { box-sizing: border-box; }
     body {
@@ -70,7 +71,7 @@
     .source-bar > * + * { margin-left: -1px; }
     .source-bar > :first-child { border-radius: 9px 0 0 9px; }
     .source-bar > :last-child { border-radius: 0 9px 9px 0; }
-    .src-group { display: flex; flex-direction: column; flex: 1 1 auto; }
+    .src-group { display: flex; flex-direction: column; flex: 1 1 auto; overflow: hidden; }
     .src-head {
       border: none; border-bottom: 1px solid var(--line); background: transparent;
       color: var(--muted); font: inherit; font-size: .78rem; font-weight: 600;
@@ -88,25 +89,28 @@
       color: var(--ink); font: inherit; font-size: .9rem; padding: 0 1rem; cursor: pointer;
     }
     .src-head:hover, .src-work:hover, .src-all:hover { background: #1f242e; }
-    .src-work.on, .src-head.on { background: var(--accent); color: #14161c; font-weight: 600; }
-    .src-head.partial { color: var(--accent); }
+    .src-work.on, .src-head.on { background: var(--pc, var(--accent)); color: #14161c; font-weight: 600; }
+    .src-head.partial { color: var(--pc, var(--accent)); }
     .src-work.dim, .src-head.dim { opacity: .38; }
     .dd-sources { width: min(50rem, 92vw); }
     .wog-head { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: .7rem .35rem .15rem; }
+    .wog-section.dim { opacity: .38; }
+    .dd-item.dim { opacity: .38; }
     #status { color: var(--muted); font-size: .85rem; margin: 1rem .2rem .4rem; min-height: 1.2em; }
     #results { list-style: none; margin: 0; padding: 0; }
     .result { padding: 1rem 0; border-top: 1px solid var(--line); }
     .r-head { display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap; }
     .r-title { color: #cdd3ff; font-size: 1.15rem; font-weight: 600; text-decoration: none; }
     .r-title:hover { text-decoration: underline; }
-    .source-pill {
+    .pill {
       font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
-      color: var(--accent); background: #241317; padding: .12rem .5rem; border-radius: 999px;
+      padding: .12rem .5rem; border-radius: 999px;
+      color: var(--pc, var(--muted)); background: color-mix(in srgb, var(--pc, var(--muted)) 16%, transparent);
     }
-    .wog-pill {
-      font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
-      color: #7fd1c7; background: #11241f; padding: .12rem .5rem; border-radius: 999px;
-    }
+    .sub-pill { text-transform: none; letter-spacing: 0; }
+    /* Colour-coding: works by universe + a few WoG sources; everything else grey. */
+    .c-yellow { --pc: var(--accent2); } .c-red { --pc: var(--accent); }
+    .c-green { --pc: var(--c-green); } .c-blue { --pc: var(--c-blue); } .c-purple { --pc: var(--c-purple); } .c-grey { --pc: var(--ink); }
     .r-date { color: var(--muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
     .r-context {
       color: var(--muted); font-style: italic; font-size: .92rem; line-height: 1.5;
@@ -260,6 +264,16 @@
     const ORIGIN_LABELS = { CitedComment: 'Worm comments', WoGThreadOnly: 'Only in the thread', Reddit: 'Reddit', SufficientVelocity: 'SufficientVelocity', SpaceBattles: 'SpaceBattles', Other: 'Other sites' };
     const wt = meta.wogThread || { total: 0, origins: [] };
 
+    // Colour-coding by universe (works) + a few WoG sources; default grey. Drives
+    // both the result pills and the fiction-bar highlights (via a --pc CSS var).
+    const CAT_COLOR = {
+      Worm: 'c-yellow', Ward: 'c-yellow', Parahumans: 'c-yellow',
+      Pact: 'c-red', Pale: 'c-red', Otherverse: 'c-red',
+      Twig: 'c-green', Claw: 'c-blue', Seek: 'c-purple', Standalone: 'c-grey',
+      Reddit: 'c-red', SpaceBattles: 'c-blue', SufficientVelocity: 'c-blue',
+    };
+    const catColor = (k) => CAT_COLOR[k] || 'c-grey';
+
     // Group fiction by Wildbow's universes; Twig / Claw / Seek each stand alone.
     const UNIVERSES = [
       { label: 'Parahumans', works: ['Worm', 'Ward'] },
@@ -320,20 +334,23 @@
     // "Select all" and the Word of God dropdown button.
     const fictionBar = fictionChildren.map((g) =>
       `<div class="src-group" style="flex-grow:${g.children.length}">` +
-        `<button type="button" class="src-head" data-cats="${esc(leafCats(g).join('|'))}">${esc(g.label)}</button>` +
+        `<button type="button" class="src-head ${catColor(g.label)}" data-cats="${esc(leafCats(g).join('|'))}">${esc(g.label)}</button>` +
         `<div class="src-works">${g.children.map((w) =>
-          `<button type="button" class="src-work" data-cats="${esc(w.cat)}">${esc(w.label)}</button>`).join('')}</div>` +
+          `<button type="button" class="src-work ${catColor(w.label)}" data-cats="${esc(w.cat)}">${esc(w.label)}</button>`).join('')}</div>` +
       `</div>`).join('');
     // The Sources popup: the fiction bar on top, the Word of God tree below.
     srcPanel.innerHTML =
       `<div class="source-bar" id="srcBar">` +
-        `<button type="button" class="src-all" id="srcAll">Select all</button>` +
+        `<button type="button" class="src-all" id="srcAll">Select all<br>(Default)</button>` +
         fictionBar +
       `</div>` +
-      `<div class="wog-head">Word of God</div>` +
-      `<div class="dd-tree">${wogNode.children.map((n) => renderNode(n, 1)).join('')}</div>`;
+      `<div class="wog-section" id="wogSection">` +
+        `<div class="wog-head">Word of God</div>` +
+        `<div class="dd-tree">${wogNode.children.map((n) => renderNode(n, 1)).join('')}</div>` +
+      `</div>`;
     const srcBar = document.getElementById('srcBar');
     const srcAll = document.getElementById('srcAll');
+    const wogSection = document.getElementById('wogSection');
 
     // Expand/collapse on the caret. It's a <button> nested in the label, so per
     // spec clicking it does NOT toggle the label's checkbox.
@@ -348,15 +365,34 @@
     // Reflect selectedCategories onto every checkbox (checked / indeterminate).
     // Reflect selectedCategories onto the WoG dropdown checkboxes AND the bar.
     function refreshChecks() {
+      const filtering = selectedCategories.size > 0;
+      let anyWog = false;
+      const items = [];
       srcPanel.querySelectorAll('input[type=checkbox]').forEach((cb) => {
         const cats = cb.dataset.cats ? cb.dataset.cats.split('|') : [];
         const sel = cats.filter((c) => selectedCategories.has(c)).length;
         cb.checked = sel > 0 && sel === cats.length;
         cb.indeterminate = sel > 0 && sel < cats.length;
+        if (sel > 0) anyWog = true;
+        items.push({ cb, sel });
       });
+      // Fiction-only filter → the whole WoG section dims (excluded). When some WoG
+      // IS selected, dim just the unselected WoG items — an item counts as included
+      // if its own cats are selected, or a covering single-cat ancestor (Reddit /
+      // WoG Thread) is. (Mutually exclusive with the section dim, so no compounding.)
+      wogSection.classList.toggle('dim', filtering && !anyWog);
+      for (const { cb, sel } of items) {
+        const label = cb.closest('.dd-item');
+        if (!label) continue;
+        let included = sel > 0;
+        for (let a = label.closest('.dd-kids')?.previousElementSibling; a && !included; a = a.closest('.dd-kids')?.previousElementSibling) {
+          const ac = a.querySelector('input')?.dataset.cats || '';
+          if (ac && !ac.includes('|') && selectedCategories.has(ac)) included = true;
+        }
+        label.classList.toggle('dim', filtering && anyWog && !included);
+      }
       // Nothing selected = everything (all normal). Once filtering, the picked
       // works light up and the excluded ones dim.
-      const filtering = selectedCategories.size > 0;
       srcBar.querySelectorAll('.src-work, .src-head').forEach((btn) => {
         const cats = btn.dataset.cats.split('|');
         const sel = cats.filter((c) => selectedCategories.has(c)).length;
@@ -519,6 +555,18 @@
       const work = m.work || '';
       const date = m.date || '';
       const isWoG = m.type === 'WoG';
+      // Fiction wears its work pill; WoG shows only its source — never a work
+      // (it isn't part of a serial). Reddit WoG names its subreddit ("/r/weaverdice").
+      const isReddit = isWoG && m.source === 'Reddit' && m.subreddit;
+      const src = m.source || 'Comment';
+      const workPill = work ? `<span class="pill ${catColor(work)}">${esc(work)}</span>` : '';
+      const pills = !isWoG
+        ? workPill
+        : isReddit
+          ? `<span class="pill sub-pill ${catColor('Reddit')}">/r/${esc(m.subreddit)}</span>`
+          : src === 'Comment'
+            ? `${workPill}<span class="pill ${catColor(src)}">${esc(src)}</span>`
+            : `<span class="pill ${catColor(src)}">${esc(src)}</span>`;
       const context = isWoG && m.question
         ? `<p class="r-context">${m.asked_by ? `<span class="r-asker">${esc(m.asked_by)} asked:</span> ` : ''}${snippetAround(m.question, queryTerms, 200)}</p>`
         : '';
@@ -540,8 +588,7 @@
       return `<li class="result">
         <div class="r-head">
           <a class="r-title" href="${esc(url)}" target="_blank" rel="noopener">${esc(title)}</a>
-          ${work ? `<span class="source-pill">${esc(work)}</span>` : ''}
-          ${isWoG ? `<span class="wog-pill">${esc(m.source || 'Comment')}</span>` : ''}
+          ${pills}
           ${date ? `<span class="r-date">${esc(date)}</span>` : ''}
         </div>
         ${context}

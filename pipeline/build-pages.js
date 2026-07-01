@@ -55,6 +55,7 @@ function pageHtml(rec) {
       `    <span data-pagefind-meta="source">${esc(rec.source ?? 'Comment')}</span>\n` +
       `    <span data-pagefind-meta="chapter">${esc(rec.chapterTitle ?? '')}</span>\n` +
       `    <span data-pagefind-meta="asked_by">${esc(rec.parentAuthor ?? '')}</span>\n` +
+      (rec.subreddit ? `    <span data-pagefind-meta="subreddit">${esc(rec.subreddit)}</span>\n` : '') +
       (rec.wogUrl ? `    <a data-pagefind-meta="wog_url[href]" href="${esc(rec.wogUrl)}">wog</a>\n` : '') +
       (rec.question ? `    <span data-pagefind-meta="question">${esc(rec.question)}</span>\n` : '') +
       `    <span data-pagefind-meta="answer">${esc(rec.text)}</span>\n`;
