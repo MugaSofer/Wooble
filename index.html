@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wooble — search Wildbow's serials</title>
+  <style>
+    :root {
+      --bg: #0f1115; --panel: #171a21; --ink: #e8eaed; --muted: #9aa0aa;
+      --accent: #E95D5D; --accent2: #E9D45D; --line: #2a2f3a;
+      --c-green: #6bcb77; --c-blue: #5d9cec; --c-purple: #b48ce8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; background: var(--bg); color: var(--ink);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      display: flex; flex-direction: column; align-items: center;
+    }
+    header { text-align: center; margin: 6vh 1rem 1.25rem; }
+    /* Self-hosted Poppins ExtraBold: big & blocky with circular Os, so the
+       yellow/red Os read as the Parahumans/Otherverse circle symbols — and it's
+       identical on every device (system fonts varied, e.g. narrow on Samsung). */
+    @font-face { font-family: 'Poppins'; font-style: normal; font-weight: 900; font-display: swap; src: url(./fonts/poppins-900.woff2) format('woff2'); }
+    .logo { font-size: clamp(3.2rem, 10vw, 5.2rem); font-weight: 900; letter-spacing: -1px; font-family: 'Poppins', "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    .logo span { color: var(--accent); }
+	.logo span2 { color: var(--accent2); }
+    .tag { color: var(--muted); margin-top: .25rem; font-size: 1.05rem; }
+    main { width: min(720px, 92vw); padding-bottom: 4rem; }
+    #q {
+      width: 100%; padding: .85rem 1.1rem; font-size: 1.1rem; color: var(--ink);
+      background: var(--panel); border: 1px solid var(--line); border-radius: 999px; outline: none;
+    }
+    #q:focus { border-color: var(--accent); }
+    .controls { position: relative; display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem 1.5rem; margin: .9rem .2rem .2rem; font-size: .85rem; color: var(--muted); }
+    .controls > label { display: inline-flex; align-items: center; gap: .4rem; }
+    /* Phones: tighten control spacing/padding so they pack in more evenly. */
+    @media (max-width: 480px) {
+      .controls { gap: .5rem .8rem; }
+      .controls select, .controls .dd-btn { padding: .2rem .45rem; }
+    }
+    select, .dd-btn {
+      color: var(--ink); background: var(--panel); border: 1px solid var(--line);
+      border-radius: 8px; padding: .25rem .5rem; font: inherit; font-size: .85rem;
+    }
+    select:focus, .dd-btn:focus { outline: none; border-color: var(--accent); }
+    /* Works multi-select: a select-styled button that opens a checkbox popup. */
+    /* Static so the Sources popup anchors to .controls (main width), not the
+       button — keeps it aligned under the search bar and off the viewport edge. */
+    .dropdown { display: inline-block; }
+    .dd-btn { cursor: pointer; }
+    .dd-btn::after { content: "▾"; margin-left: .35rem; opacity: .6; }
+    .dd-btn[aria-expanded="true"] { border-color: var(--accent); }
+    .dd-panel {
+      position: absolute; z-index: 10; top: calc(100% + 5px); left: 0; min-width: 300px;
+      max-height: 300px; overflow: auto; background: var(--panel); border: 1px solid var(--line);
+      border-radius: 10px; padding: .35rem; box-shadow: 0 10px 28px rgba(0, 0, 0, .45);
+    }
+    .dd-panel label {
+      display: flex; align-items: center; gap: .55rem; padding: .32rem .45rem;
+      border-radius: 6px; cursor: pointer; font-size: .88rem; color: var(--ink); user-select: none;
+    }
+    .dd-panel label:hover { background: #1f242e; }
+    .dd-panel input { accent-color: var(--accent); }
+    .dd-panel .count { margin-left: auto; opacity: .5; font-variant-numeric: tabular-nums; }
+    .dd-panel label.dd-parent { font-weight: 600; }
+    .dd-twirl { flex: 0 0 1.1rem; width: 1.1rem; }
+    .dd-caret {
+      background: none; border: none; color: var(--muted); cursor: pointer;
+      padding: 0; font-size: .6rem; line-height: 1; text-align: center;
+    }
+    .dd-caret::before { content: '▶'; display: inline-block; transition: transform .12s; }
+    .dd-caret.open::before { transform: rotate(90deg); }
+    .dd-kids { padding-left: 1.15rem; }
+    .dd-kids[hidden] { display: none; }
+    /* Fiction sources: ONE connected bar of universe groups (a header over its
+       works), led by "Select all". Lives inside the Sources popup, above the Word
+       of God tree. Cells share borders (margin -1px); wraps with a gap when narrow. */
+    .source-bar { display: flex; flex-wrap: wrap; justify-content: center; align-items: stretch; row-gap: .5rem; }
+    .source-bar > * { border: 1px solid var(--line); background: var(--panel); }
+    .source-bar > * + * { margin-left: -1px; }
+    .source-bar > :first-child { border-radius: 9px 0 0 9px; }
+    .source-bar > :last-child { border-radius: 0 9px 9px 0; }
+    .src-group { display: flex; flex-direction: column; flex: 1 1 auto; overflow: hidden; }
+    .src-head {
+      border: none; border-bottom: 1px solid var(--line); background: transparent;
+      color: var(--muted); font: inherit; font-size: .78rem; font-weight: 600;
+      padding: .3rem .7rem; cursor: pointer; text-align: center;
+    }
+    .src-works { display: flex; flex: 1; }
+    .src-work {
+      flex: 1; border: none; border-left: 1px solid var(--line); background: transparent;
+      color: var(--ink); font: inherit; font-size: .9rem; padding: .4rem .85rem; cursor: pointer;
+      min-width: 3.8rem; text-align: center; white-space: nowrap;
+    }
+    .src-works .src-work:first-child { border-left: none; }
+    .src-all {
+      display: inline-flex; flex: 1 1 auto; align-items: center; justify-content: center;
+      color: var(--ink); font: inherit; font-size: .9rem; padding: 0 1rem; cursor: pointer;
+    }
+    .src-head:hover, .src-work:hover, .src-all:hover { background: #1f242e; }
+    .src-work.on, .src-head.on { background: var(--pc, var(--accent)); color: #14161c; font-weight: 600; }
+    .src-head.partial { color: var(--pc, var(--accent)); }
+    .src-work.dim, .src-head.dim { opacity: .38; }
+    .dd-sources { width: min(50rem, 92vw); }
+    .wog-section { margin-top: .5rem; }
+    .wog-section.dim { opacity: .38; }
+    .dd-item.dim { opacity: .38; }
+    #status { color: var(--muted); font-size: .85rem; margin: 1rem .2rem .4rem; min-height: 1.2em; }
+    #results { list-style: none; margin: 0; padding: 0; }
+    .result { padding: 1rem 0; border-top: 1px solid var(--line); }
+    .r-head { display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap; }
+    .r-title { color: #cdd3ff; font-size: 1.15rem; font-weight: 600; text-decoration: none; }
+    .r-title:hover { text-decoration: underline; }
+    .pill {
+      font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+      padding: .12rem .5rem; border-radius: 999px;
+      color: var(--pc, var(--muted)); background: color-mix(in srgb, var(--pc, var(--muted)) 16%, transparent);
+    }
+    .sub-pill { text-transform: none; letter-spacing: 0; }
+    /* Colour-coding: works by universe + a few WoG sources; everything else grey. */
+    .c-yellow { --pc: var(--accent2); } .c-red { --pc: var(--accent); }
+    .c-green { --pc: var(--c-green); } .c-blue { --pc: var(--c-blue); } .c-purple { --pc: var(--c-purple); } .c-grey { --pc: var(--ink); }
+    .r-date { color: var(--muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
+    .r-context {
+      color: var(--muted); font-style: italic; font-size: .92rem; line-height: 1.5;
+      margin: .35rem 0 .2rem; padding-left: .7rem; border-left: 2px solid var(--line);
+    }
+    .r-asker { font-style: normal; font-weight: 600; color: #b89a5e; }
+    .r-answer-by { font-weight: 600; color: #7fd1c7; }
+    .r-excerpt { color: var(--ink); margin: .4rem 0 .35rem; line-height: 1.55; }
+    .r-excerpt mark { background: #4a3b12; color: #ffe8a3; padding: 0 .1em; border-radius: 2px; }
+    .r-url { color: var(--muted); font-size: .8rem; text-decoration: none; word-break: break-all; }
+    .r-url:hover { color: var(--accent); }
+    .r-wog { margin-left: .6rem; }
+    #more {
+      display: none; margin: 1.5rem auto 0; padding: .55rem 1.4rem; font: inherit; cursor: pointer;
+      color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
+    }
+    #more:hover { border-color: var(--accent); }
+    footer {
+      color: var(--muted); font-size: .82rem; text-align: center;
+      max-width: 640px; margin: auto 1rem 2rem; line-height: 1.5;
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">W<span2>o</span2><span>o</span>ble</div>
+    <div class="tag">Search across Wildbow's web serials.</div>
+  </header>
+
+  <main>
+    <input id="q" type="search" autocomplete="off" autofocus
+           placeholder="Search Worm, Pact, Twig, Ward, Pale, Claw, Seek…">
+    <div class="controls">
+      <label>Sources
+        <span class="dropdown">
+          <button type="button" id="srcBtn" class="dd-btn" aria-haspopup="true" aria-expanded="false">All sources</button>
+          <div class="dd-panel dd-sources" id="srcPanel" hidden></div>
+        </span>
+      </label>
+      <label>Sort
+        <select id="sort">
+          <option value="">Best match</option>
+          <option value="desc">Newest first</option>
+          <option value="asc">Oldest first</option>
+        </select>
+      </label>
+	   <label>Years
+        <select id="yearFrom"></select>
+        <span>–</span>
+        <select id="yearTo"></select>
+      </label>
+      <label>Show
+        <select id="matches">
+          <option value="all">All in page</option>
+          <option value="one">Best in page</option>
+        </select>
+      </label>
+    </div>
+    <div id="status"></div>
+    <ol id="results"></ol>
+    <button id="more" type="button">Show more</button>
+  </main>
+
+  <footer>
+    Wooble is an unofficial fan-made quote finder. It shows snippets and links you
+    straight to the source — all stories are © <a href="https://www.patreon.com/Wildbow/about">Wildbow</a>. <br>
+	<a href="https://www.patreon.com/Wildbow/about">Support Wildbow</a> - <a href="https://ko-fi.com/mugasofer">Support This Site</a> - <a href="https://github.com/MugaSofer/Wooble/">GitHub</a>
+  </footer>
+
+  <script type="module">
+    const esc = (s) => String(s ?? '').replace(/[&<>"]/g,
+      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const clip = (s, n) => { s = String(s ?? ''); return s.length > n ? s.slice(0, n).replace(/\s+\S*$/, '') + '…' : s; };
+    // Mark a Pagefind excerpt as a mid-text snippet with leading/trailing … when
+    // it doesn't already start/end at a clean boundary.
+    const snippet = (ex) => {
+      const plain = String(ex).replace(/<[^>]+>/g, '').trim();
+      const lead = /^[A-Z0-9"“'(\[]/.test(plain) ? '' : '…';
+      const tail = /[.!?…"”')\]]$/.test(plain) ? '' : '…';
+      return `${lead}${ex}${tail}`;
+    };
+    // Our own highlighter (for WoG, where we render question/answer from meta
+    // rather than Pagefind's merged excerpt). Escapes text, marks query terms.
+    const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    function highlight(text, terms) {
+      text = String(text ?? '');
+      const valid = terms.filter((t) => t.length >= 2);
+      if (!valid.length) return esc(text);
+      const re = new RegExp(`(${valid.map(escapeRe).join('|')})`, 'gi');
+      let out = '', last = 0, m;
+      while ((m = re.exec(text))) {
+        out += esc(text.slice(last, m.index)) + '<mark>' + esc(m[0]) + '</mark>';
+        last = m.index + m[0].length;
+        if (m.index === re.lastIndex) re.lastIndex++;
+      }
+      return out + esc(text.slice(last));
+    }
+    // A window of `max` chars centred on the first query-term match, highlighted.
+    function snippetAround(text, terms, max) {
+      text = String(text ?? '');
+      if (!terms.length || text.length <= max) return highlight(text.length > max ? clip(text, max) : text, terms);
+      const low = text.toLowerCase();
+      let idx = -1;
+      for (const t of terms) { const i = low.indexOf(t.toLowerCase()); if (i >= 0 && (idx < 0 || i < idx)) idx = i; }
+      if (idx < 0) return highlight(clip(text, max), terms);
+      const start = Math.max(0, idx - 60), end = Math.min(text.length, start + max);
+      return (start > 0 ? '…' : '') + highlight(text.slice(start, end), terms) + (end < text.length ? '…' : '');
+    }
+
+    const qEl = document.getElementById('q');
+    const sortEl = document.getElementById('sort');
+    const yearFromEl = document.getElementById('yearFrom');
+    const yearToEl = document.getElementById('yearTo');
+    const srcBtn = document.getElementById('srcBtn');
+    const srcPanel = document.getElementById('srcPanel');
+    const statusEl = document.getElementById('status');
+    const resultsEl = document.getElementById('results');
+    const moreBtn = document.getElementById('more');
+    const matchesEl = document.getElementById('matches');
+
+    const selectedCategories = new Set();
+    const PAGE = 10;
+    let pending = null;   // current result list awaiting render
+    let shown = 0;
+    let queryTerms = [];  // terms to highlight in WoG question/answer
+
+    // Pagefind loads in the background; it is only awaited when a search runs.
+    // Relative path so the bundle resolves under a root (Cloudflare, local) or
+    // a subpath (GitHub Pages /Wooble/).
+    const pagefindPromise = import('./pagefind/pagefind.js');
+
+    // Filter data from build-time metadata (loads instantly; tiny file).
+    let meta = {};
+    try { meta = await (await fetch('./meta.json')).json(); } catch { /* fall back */ }
+    if (!meta.fiction) {
+      const f = await (await pagefindPromise).filters();
+      meta = {
+        fiction: Object.entries(f.category || {}).filter(([k]) => /^(Worm|Pact|Twig|Ward|Pale|Claw|Seek)$/.test(k)),
+        wogComment: [], wogThread: { total: 0, origins: [] }, years: Object.keys(f.year || {}).sort(),
+      };
+    }
+
+    // Sources model. Fiction → a bar of per-work toggles (grouped by universe);
+    // Word of God → a dropdown (blog comments per-work, Reddit subs, the WoG
+    // Thread group). A node maps to one `category` value; a record can carry
+    // several (a cited blog comment is tagged both its work and "WoGThread"), so
+    // any mix of leaves ORs together in a single Pagefind filter. "WoG Thread
+    // (all)" is itself selectable (the WoGThread tag) and groups the thread's
+    // entries by their original source.
+    const ORIGIN_LABELS = { CitedComment: 'Worm comments', WoGThreadOnly: 'Only in the thread', Reddit: 'Reddit', SufficientVelocity: 'SufficientVelocity', SpaceBattles: 'SpaceBattles', Other: 'Other sites' };
+    const wt = meta.wogThread || { total: 0, origins: [] };
+
+    // Colour-coding by universe (works) + a few WoG sources; default grey. Drives
+    // both the result pills and the fiction-bar highlights (via a --pc CSS var).
+    const CAT_COLOR = {
+      Worm: 'c-yellow', Ward: 'c-yellow', Parahumans: 'c-yellow',
+      Pact: 'c-red', Pale: 'c-red', Otherverse: 'c-red',
+      Twig: 'c-green', Claw: 'c-blue', Seek: 'c-purple', Standalone: 'c-grey',
+      Reddit: 'c-red', SpaceBattles: 'c-blue', SufficientVelocity: 'c-blue',
+    };
+    const catColor = (k) => CAT_COLOR[k] || 'c-grey';
+
+    // Group fiction by Wildbow's universes; Twig / Claw / Seek each stand alone.
+    const UNIVERSES = [
+      { label: 'Parahumans', works: ['Worm', 'Ward'] },
+      { label: 'Otherverse', works: ['Pact', 'Pale'] },
+    ];
+    const fictionMap = new Map(meta.fiction || []);
+    const grouped = new Set();
+    const fictionChildren = [];
+    for (const u of UNIVERSES) {
+      const kids = u.works.filter((w) => fictionMap.has(w))
+        .map((w) => { grouped.add(w); return { label: w, count: fictionMap.get(w), cat: w }; });
+      if (kids.length) fictionChildren.push({ label: u.label, children: kids });
+    }
+    const standalone = (meta.fiction || []).filter(([w]) => !grouped.has(w)).map(([w, c]) => ({ label: w, count: c, cat: w }));
+    if (standalone.length) fictionChildren.push({ label: 'Standalone', children: standalone });
+
+    // Word of God stays a dropdown (a deep tree); fiction gets the persistent bar.
+    const wogNode = {
+      label: 'Word of God',
+      children: [
+        ...((meta.wogComment || []).length
+          ? [{ label: 'Blog comments', children: meta.wogComment.map(([w, c]) => ({ label: w, count: c, cat: `Comment:${w}` })) }]
+          : []),
+        ...((meta.reddit || []).length
+          ? [{
+              label: 'Reddit', cat: 'RedditWoG',
+              count: (meta.reddit || []).reduce((s, [, c]) => s + c, 0),
+              children: meta.reddit.map(([sub, c]) => ({ label: 'r/' + sub, count: c, cat: `Reddit:${sub}` })),
+            }]
+          : []),
+        ...(wt.total
+          ? [{
+              label: 'SpaceBattles Word of God Thread', cat: 'WoGThread', count: wt.total,
+              children: (wt.origins || []).map(([o, c]) => ({ label: ORIGIN_LABELS[o] || o, count: c, cat: o })),
+            }]
+          : []),
+      ],
+    };
+
+    const leafCats = (node) => (node.cat ? [node.cat] : node.children.flatMap(leafCats));
+    const nodeCount = (node) => (node.cat ? node.count : node.children.reduce((s, c) => s + nodeCount(c), 0));
+    function renderNode(node, depth) {
+      const cats = esc(leafCats(node).join('|'));
+      const count = nodeCount(node).toLocaleString();
+      // Every row leads with a 1.1rem slot — a caret for groups, an empty spacer
+      // for leaves — so checkboxes line up; nesting indents via .dd-kids padding.
+      if (!node.children) {
+        return `<label class="dd-item"><span class="dd-twirl"></span><input type="checkbox" data-cats="${cats}">${esc(node.label)}<span class="count">${count}</span></label>`;
+      }
+      const collapsed = depth >= 1; // top level open, sub-groups collapsed to keep it short
+      return `<div class="dd-group">` +
+        `<label class="dd-item dd-parent"><button type="button" class="dd-twirl dd-caret${collapsed ? '' : ' open'}"></button>` +
+          `<input type="checkbox" data-cats="${cats}">${esc(node.label)}<span class="count">${count}</span></label>` +
+        `<div class="dd-kids"${collapsed ? ' hidden' : ''}>${node.children.map((c) => renderNode(c, depth + 1)).join('')}</div>` +
+      `</div>`;
+    }
+    // Build the fiction bar: universe groups of work toggles, bookended by
+    // "Select all" and the Word of God dropdown button.
+    const fictionBar = fictionChildren.map((g) =>
+      `<div class="src-group" style="flex-grow:${g.children.length}">` +
+        `<button type="button" class="src-head ${catColor(g.label)}" data-cats="${esc(leafCats(g).join('|'))}">${esc(g.label)}</button>` +
+        `<div class="src-works">${g.children.map((w) =>
+          `<button type="button" class="src-work ${catColor(w.label)}" data-cats="${esc(w.cat)}">${esc(w.label)}</button>`).join('')}</div>` +
+      `</div>`).join('');
+    // The Sources popup: the fiction bar on top, the Word of God tree below.
+    srcPanel.innerHTML =
+      `<div class="source-bar" id="srcBar">` +
+        `<button type="button" class="src-all" id="srcAll">Select all<br>(Default)</button>` +
+        fictionBar +
+      `</div>` +
+      // "Word of God" is a collapsible parent checkbox (selects all WoG); its
+      // children (Blog comments / Reddit / WoG Thread) render collapsed under it.
+      `<div class="wog-section" id="wogSection">${renderNode(wogNode, 0)}</div>`;
+    const srcBar = document.getElementById('srcBar');
+    const srcAll = document.getElementById('srcAll');
+    const wogSection = document.getElementById('wogSection');
+
+    // Expand/collapse on the caret. It's a <button> nested in the label, so per
+    // spec clicking it does NOT toggle the label's checkbox.
+    srcPanel.addEventListener('click', (e) => {
+      const caret = e.target.closest('.dd-caret');
+      if (!caret) return;
+      e.preventDefault();
+      const kids = caret.closest('.dd-item').nextElementSibling;
+      if (kids) { kids.hidden = !kids.hidden; caret.classList.toggle('open', !kids.hidden); }
+    });
+
+    // Reflect selectedCategories onto every checkbox (checked / indeterminate).
+    // Reflect selectedCategories onto the WoG dropdown checkboxes AND the bar.
+    function refreshChecks() {
+      const filtering = selectedCategories.size > 0;
+      let anyWog = false;
+      const items = [];
+      srcPanel.querySelectorAll('input[type=checkbox]').forEach((cb) => {
+        const cats = cb.dataset.cats ? cb.dataset.cats.split('|') : [];
+        const sel = cats.filter((c) => selectedCategories.has(c)).length;
+        cb.checked = sel > 0 && sel === cats.length;
+        cb.indeterminate = sel > 0 && sel < cats.length;
+        if (sel > 0) anyWog = true;
+        items.push({ cb, sel });
+      });
+      // Fiction-only filter → the whole WoG section dims (excluded). When some WoG
+      // IS selected, dim just the unselected WoG items — an item counts as included
+      // if its own cats are selected, or a covering single-cat ancestor (Reddit /
+      // WoG Thread) is. (Mutually exclusive with the section dim, so no compounding.)
+      wogSection.classList.toggle('dim', filtering && !anyWog);
+      for (const { cb, sel } of items) {
+        const label = cb.closest('.dd-item');
+        if (!label) continue;
+        let included = sel > 0;
+        for (let a = label.closest('.dd-kids')?.previousElementSibling; a && !included; a = a.closest('.dd-kids')?.previousElementSibling) {
+          const ac = a.querySelector('input')?.dataset.cats || '';
+          if (ac && !ac.includes('|') && selectedCategories.has(ac)) included = true;
+        }
+        label.classList.toggle('dim', filtering && anyWog && !included);
+      }
+      // Nothing selected = everything (all normal). Once filtering, the picked
+      // works light up and the excluded ones dim.
+      srcBar.querySelectorAll('.src-work, .src-head').forEach((btn) => {
+        const cats = btn.dataset.cats.split('|');
+        const sel = cats.filter((c) => selectedCategories.has(c)).length;
+        const on = sel > 0 && sel === cats.length;
+        const partial = sel > 0 && sel < cats.length;
+        btn.classList.toggle('on', on);
+        btn.classList.toggle('partial', partial);
+        btn.classList.toggle('dim', filtering && !on && !partial);
+      });
+    }
+    function updateSrcLabel() {
+      srcBtn.textContent = selectedCategories.size === 0 ? 'All sources' : `${selectedCategories.size} selected`;
+    }
+    function closeSrc() {
+      srcPanel.hidden = true;
+      srcBtn.setAttribute('aria-expanded', 'false');
+    }
+
+    srcBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const open = srcPanel.hidden;
+      srcPanel.hidden = !open;
+      srcBtn.setAttribute('aria-expanded', String(open));
+    });
+    srcPanel.addEventListener('change', (e) => {
+      const cb = e.target;
+      if (!(cb instanceof HTMLInputElement)) return;
+      (cb.dataset.cats ? cb.dataset.cats.split('|') : []).forEach((c) =>
+        cb.checked ? selectedCategories.add(c) : selectedCategories.delete(c));
+      refreshChecks();
+      updateSrcLabel();
+      run();
+    });
+    // Fiction bar: toggle a single work, a whole universe (its header), or —
+    // via "Select all" — every work at once.
+    srcBar.addEventListener('click', (e) => {
+      const btn = e.target.closest('.src-all, .src-head, .src-work');
+      if (!btn) return;
+      if (btn.classList.contains('src-all')) {
+        selectedCategories.clear(); // reset to "everything"
+      } else {
+        const cats = btn.dataset.cats.split('|');
+        const allOn = cats.every((c) => selectedCategories.has(c));
+        cats.forEach((c) => allOn ? selectedCategories.delete(c) : selectedCategories.add(c));
+      }
+      refreshChecks();
+      updateSrcLabel();
+      run();
+    });
+    document.addEventListener('click', (e) => {
+      if (srcPanel.hidden) return;
+      const path = e.composedPath ? e.composedPath() : [];
+      if (!path.includes(srcPanel) && !path.includes(srcBtn)) closeSrc();
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSrc(); });
+
+    // Year-range selects.
+    const allYears = meta.years || [];
+    const minYear = allYears[0], maxYear = allYears[allYears.length - 1];
+    const yearOpts = allYears.map((y) => `<option value="${y}">${y}</option>`).join('');
+    yearFromEl.innerHTML = yearOpts;
+    yearToEl.innerHTML = yearOpts;
+    yearFromEl.value = minYear;
+    yearToEl.value = maxYear;
+
+    // Build the year-filter list, or null when the full range is selected.
+    function yearRange() {
+      const lo = Math.min(+yearFromEl.value, +yearToEl.value);
+      const hi = Math.max(+yearFromEl.value, +yearToEl.value);
+      if (String(lo) === minYear && String(hi) === maxYear) return null;
+      return allYears.filter((y) => +y >= lo && +y <= hi);
+    }
+
+    function buildOptions() {
+      const filters = {};
+      if (selectedCategories.size) filters.category = { any: [...selectedCategories] };
+      const yr = yearRange();
+      if (yr) filters.year = { any: yr };
+      // `refined` (browse-on-empty) reflects an explicit source/year/sort choice.
+      const refined = Object.keys(filters).length > 0 || !!sortEl.value;
+      const opts = {};
+      if (Object.keys(filters).length) opts.filters = filters;
+      if (sortEl.value) opts.sort = { date: sortEl.value };
+      return { opts, refined };
+    }
+
+    let timer;
+    qEl.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(run, 180); });
+    sortEl.addEventListener('change', run);
+    yearFromEl.addEventListener('change', run);
+    yearToEl.addEventListener('change', run);
+    moreBtn.addEventListener('click', renderMore);
+    matchesEl.addEventListener('change', () => { if (pending) { resultsEl.innerHTML = ''; shown = 0; renderMore(); } });
+
+    async function run() {
+      const query = qEl.value.trim();
+      queryTerms = query ? query.split(/\s+/).filter((t) => t.length > 1) : [];
+      const { opts, refined } = buildOptions();
+      const browsing = !query && refined;
+
+      if (!query && !browsing) {
+        resultsEl.innerHTML = '';
+        statusEl.textContent = '';
+        moreBtn.style.display = 'none';
+        return;
+      }
+      statusEl.textContent = browsing ? 'Loading…' : 'Searching…';
+
+      const pagefind = await pagefindPromise;
+      const search = await pagefind.search(query || null, opts);
+      pending = search.results;
+      shown = 0;
+      resultsEl.innerHTML = '';
+
+      const total = pending.length;
+      statusEl.textContent = total === 0
+        ? 'No results.'
+        : `${total.toLocaleString()} ${browsing ? 'chapter' : 'result'}${total === 1 ? '' : 's'}`;
+      await renderMore();
+    }
+
+    async function renderMore() {
+      const slice = pending.slice(shown, shown + PAGE);
+      const data = await Promise.all(slice.map((r) => r.data()));
+      resultsEl.insertAdjacentHTML('beforeend', data.map(card).join(''));
+      shown += slice.length;
+      moreBtn.style.display = shown < pending.length ? 'block' : 'none';
+    }
+
+    // Build multiple snippets from a full text: a window around each distinct
+    // query-term hit (nearby hits merged), for the "all matches in each result" mode.
+    function multiSnippets(text, terms, { max = 6, radius = 130 } = {}) {
+      text = String(text ?? '');
+      const valid = terms.filter((t) => t.length >= 2);
+      if (!valid.length || !text) return [];
+      const low = text.toLowerCase();
+      const hits = [];
+      for (const t of valid) {
+        const tl = t.toLowerCase();
+        for (let i = low.indexOf(tl); i >= 0; i = low.indexOf(tl, i + tl.length)) hits.push(i);
+      }
+      if (!hits.length) return [];
+      hits.sort((a, b) => a - b);
+      const centers = [];
+      for (const h of hits) if (!centers.length || h - centers[centers.length - 1] > radius) centers.push(h);
+      return centers.slice(0, max).map((pos) => {
+        const lo = Math.max(0, pos - Math.floor(radius / 2));
+        const hi = Math.min(text.length, pos + Math.floor(radius * 1.6));
+        let s = text.slice(lo, hi);
+        if (lo > 0) s = s.replace(/^\S*\s+/, '');
+        if (hi < text.length) s = s.replace(/\s+\S*$/, '');
+        return (lo > 0 ? '…' : '') + highlight(s, valid) + (hi < text.length ? '…' : '');
+      });
+    }
+
+    function card(d) {
+      const m = d.meta || {};
+      const url = m.url || d.url;
+      const title = m.title || 'Chapter';
+      const work = m.work || '';
+      const date = m.date || '';
+      const isWoG = m.type === 'WoG';
+      // Fiction wears its work pill; WoG shows only its source — never a work
+      // (it isn't part of a serial). Reddit WoG names its subreddit ("/r/weaverdice").
+      const isReddit = isWoG && m.source === 'Reddit' && m.subreddit;
+      const src = m.source || 'Comment';
+      const workPill = work ? `<span class="pill ${catColor(work)}">${esc(work)}</span>` : '';
+      const pills = !isWoG
+        ? workPill
+        : isReddit
+          ? `<span class="pill sub-pill ${catColor('Reddit')}">/r/${esc(m.subreddit)}</span>`
+          : src === 'Comment'
+            ? `${workPill}<span class="pill ${catColor(src)}">${esc(src)}</span>`
+            : `<span class="pill ${catColor(src)}">${esc(src)}</span>`;
+      const context = isWoG && m.question
+        ? `<p class="r-context">${m.asked_by ? `<span class="r-asker">${esc(m.asked_by)} said:</span> ` : ''}${snippetAround(m.question, queryTerms, 200)}</p>`
+        : '';
+      // "All in each result" → a snippet per matching passage (fiction from the
+      // full chapter text, WoG from Wildbow's answer); else the single best excerpt.
+      const multi = matchesEl.value === 'all' && queryTerms.length > 0;
+      let excerptHtml;
+      if (isWoG) {
+        const snips = multi ? multiSnippets(m.answer, queryTerms) : [];
+        excerptHtml = snips.length
+          ? snips.map((s, i) => `<p class="r-excerpt">${i === 0 ? '<span class="r-answer-by">Wildbow:</span> ' : ''}${s}</p>`).join('')
+          : `<p class="r-excerpt"><span class="r-answer-by">Wildbow:</span> ${m.answer ? snippetAround(m.answer, queryTerms, 300) : snippet(d.excerpt)}</p>`;
+      } else {
+        const snips = multi ? multiSnippets(d.content, queryTerms) : [];
+        excerptHtml = snips.length
+          ? snips.map((s) => `<p class="r-excerpt">${s}</p>`).join('')
+          : `<p class="r-excerpt">${snippet(d.excerpt)}</p>`;
+      }
+      return `<li class="result">
+        <div class="r-head">
+          <a class="r-title" href="${esc(url)}" target="_blank" rel="noopener">${esc(title)}</a>
+          ${pills}
+          ${date ? `<span class="r-date">${esc(date)}</span>` : ''}
+        </div>
+        ${context}
+        ${excerptHtml}
+        <a class="r-url" href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a>${m.wog_url ? `
+        <a class="r-url r-wog" href="${esc(m.wog_url)}" target="_blank" rel="noopener">· in WoG repository</a>` : ''}
+      </li>`;
+    }
+  </script>
+</body>
+</html>
