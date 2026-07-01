@@ -93,7 +93,7 @@
     .src-head.partial { color: var(--pc, var(--accent)); }
     .src-work.dim, .src-head.dim { opacity: .38; }
     .dd-sources { width: min(50rem, 92vw); }
-    .wog-head { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: .7rem .35rem .15rem; }
+    .wog-section { margin-top: .5rem; }
     .wog-section.dim { opacity: .38; }
     .dd-item.dim { opacity: .38; }
     #status { color: var(--muted); font-size: .85rem; margin: 1rem .2rem .4rem; min-height: 1.2em; }
@@ -176,8 +176,8 @@
   </main>
 
   <footer>
-    Wooble is an unofficial fan-made finder. It shows snippets and links you
-    straight to the original chapters — all stories are © <a href="https://www.patreon.com/Wildbow/about">Wildbow</a>. <br>
+    Wooble is an unofficial fan-made quote finder. It shows snippets and links you
+    straight to the source — all stories are © <a href="https://www.patreon.com/Wildbow/about">Wildbow</a>. <br>
 	<a href="https://www.patreon.com/Wildbow/about">Support Wildbow</a> - <a href="https://ko-fi.com/mugasofer">Support This Site</a> - <a href="https://github.com/MugaSofer/Wooble/">GitHub</a>
   </footer>
 
@@ -344,10 +344,9 @@
         `<button type="button" class="src-all" id="srcAll">Select all<br>(Default)</button>` +
         fictionBar +
       `</div>` +
-      `<div class="wog-section" id="wogSection">` +
-        `<div class="wog-head">Word of God</div>` +
-        `<div class="dd-tree">${wogNode.children.map((n) => renderNode(n, 1)).join('')}</div>` +
-      `</div>`;
+      // "Word of God" is a collapsible parent checkbox (selects all WoG); its
+      // children (Blog comments / Reddit / WoG Thread) render collapsed under it.
+      `<div class="wog-section" id="wogSection">${renderNode(wogNode, 0)}</div>`;
     const srcBar = document.getElementById('srcBar');
     const srcAll = document.getElementById('srcAll');
     const wogSection = document.getElementById('wogSection');
@@ -568,7 +567,7 @@
             ? `${workPill}<span class="pill ${catColor(src)}">${esc(src)}</span>`
             : `<span class="pill ${catColor(src)}">${esc(src)}</span>`;
       const context = isWoG && m.question
-        ? `<p class="r-context">${m.asked_by ? `<span class="r-asker">${esc(m.asked_by)} asked:</span> ` : ''}${snippetAround(m.question, queryTerms, 200)}</p>`
+        ? `<p class="r-context">${m.asked_by ? `<span class="r-asker">${esc(m.asked_by)} said:</span> ` : ''}${snippetAround(m.question, queryTerms, 200)}</p>`
         : '';
       // "All in each result" → a snippet per matching passage (fiction from the
       // full chapter text, WoG from Wildbow's answer); else the single best excerpt.
