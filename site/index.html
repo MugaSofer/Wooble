@@ -26,7 +26,7 @@
       background: var(--panel); border: 1px solid var(--line); border-radius: 999px; outline: none;
     }
     #q:focus { border-color: var(--accent); }
-    .controls { display: flex; flex-wrap: wrap; gap: 1rem 1.5rem; margin: .9rem .2rem .2rem; font-size: .85rem; color: var(--muted); }
+    .controls { position: relative; display: flex; flex-wrap: wrap; gap: 1rem 1.5rem; margin: .9rem .2rem .2rem; font-size: .85rem; color: var(--muted); }
     .controls > label { display: inline-flex; align-items: center; gap: .4rem; }
     select, .dd-btn {
       color: var(--ink); background: var(--panel); border: 1px solid var(--line);
@@ -34,7 +34,9 @@
     }
     select:focus, .dd-btn:focus { outline: none; border-color: var(--accent); }
     /* Works multi-select: a select-styled button that opens a checkbox popup. */
-    .dropdown { position: relative; display: inline-block; }
+    /* Static so the Sources popup anchors to .controls (main width), not the
+       button — keeps it aligned under the search bar and off the viewport edge. */
+    .dropdown { display: inline-block; }
     .dd-btn { cursor: pointer; }
     .dd-btn::after { content: "▾"; margin-left: .35rem; opacity: .6; }
     .dd-btn[aria-expanded="true"] { border-color: var(--accent); }
@@ -60,6 +62,37 @@
     .dd-caret.open::before { transform: rotate(90deg); }
     .dd-kids { padding-left: 1.15rem; }
     .dd-kids[hidden] { display: none; }
+    /* Fiction sources: ONE connected bar of universe groups (a header over its
+       works), led by "Select all". Lives inside the Sources popup, above the Word
+       of God tree. Cells share borders (margin -1px); wraps with a gap when narrow. */
+    .source-bar { display: flex; flex-wrap: wrap; justify-content: center; align-items: stretch; row-gap: .5rem; }
+    .source-bar > * { border: 1px solid var(--line); background: var(--panel); }
+    .source-bar > * + * { margin-left: -1px; }
+    .source-bar > :first-child { border-radius: 9px 0 0 9px; }
+    .source-bar > :last-child { border-radius: 0 9px 9px 0; }
+    .src-group { display: flex; flex-direction: column; flex: 1 1 auto; }
+    .src-head {
+      border: none; border-bottom: 1px solid var(--line); background: transparent;
+      color: var(--muted); font: inherit; font-size: .78rem; font-weight: 600;
+      padding: .3rem .7rem; cursor: pointer; text-align: center;
+    }
+    .src-works { display: flex; flex: 1; }
+    .src-work {
+      flex: 1; border: none; border-left: 1px solid var(--line); background: transparent;
+      color: var(--ink); font: inherit; font-size: .9rem; padding: .4rem .85rem; cursor: pointer;
+      min-width: 3.8rem; text-align: center; white-space: nowrap;
+    }
+    .src-works .src-work:first-child { border-left: none; }
+    .src-all {
+      display: inline-flex; flex: 1 1 auto; align-items: center; justify-content: center;
+      color: var(--ink); font: inherit; font-size: .9rem; padding: 0 1rem; cursor: pointer;
+    }
+    .src-head:hover, .src-work:hover, .src-all:hover { background: #1f242e; }
+    .src-work.on, .src-head.on { background: var(--accent); color: #14161c; font-weight: 600; }
+    .src-head.partial { color: var(--accent); }
+    .src-work.dim, .src-head.dim { opacity: .38; }
+    .dd-sources { width: min(50rem, 92vw); }
+    .wog-head { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: .7rem .35rem .15rem; }
     #status { color: var(--muted); font-size: .85rem; margin: 1rem .2rem .4rem; min-height: 1.2em; }
     #results { list-style: none; margin: 0; padding: 0; }
     .result { padding: 1rem 0; border-top: 1px solid var(--line); }
@@ -111,7 +144,7 @@
       <label>Sources
         <span class="dropdown">
           <button type="button" id="srcBtn" class="dd-btn" aria-haspopup="true" aria-expanded="false">All sources</button>
-          <div class="dd-panel" id="srcPanel" hidden></div>
+          <div class="dd-panel dd-sources" id="srcPanel" hidden></div>
         </span>
       </label>
       <label>Years
@@ -217,12 +250,13 @@
       };
     }
 
-    // Tiered "Sources" tree. Fiction → works. Word of God → blog comments
-    // (per-work) + the WoG Thread group. A node maps to one `category` value; a
-    // record can carry several (a cited blog comment is tagged both its work and
-    // "WoGThread"), so any mix of leaves ORs together in a single Pagefind filter.
-    // "WoG Thread (all)" is itself selectable (the WoGThread tag) and groups the
-    // repository's entries by their original source.
+    // Sources model. Fiction → a bar of per-work toggles (grouped by universe);
+    // Word of God → a dropdown (blog comments per-work, Reddit subs, the WoG
+    // Thread group). A node maps to one `category` value; a record can carry
+    // several (a cited blog comment is tagged both its work and "WoGThread"), so
+    // any mix of leaves ORs together in a single Pagefind filter. "WoG Thread
+    // (all)" is itself selectable (the WoGThread tag) and groups the thread's
+    // entries by their original source.
     const ORIGIN_LABELS = { CitedComment: 'Worm comments', WoGThreadOnly: 'Only in the thread', Reddit: 'Reddit', SufficientVelocity: 'SufficientVelocity', SpaceBattles: 'SpaceBattles', Other: 'Other sites' };
     const wt = meta.wogThread || { total: 0, origins: [] };
 
@@ -242,30 +276,28 @@
     const standalone = (meta.fiction || []).filter(([w]) => !grouped.has(w)).map(([w, c]) => ({ label: w, count: c, cat: w }));
     if (standalone.length) fictionChildren.push({ label: 'Standalone', children: standalone });
 
-    const tree = [
-      { label: 'Fiction', children: fictionChildren },
-      {
-        label: 'Word of God',
-        children: [
-          ...((meta.wogComment || []).length
-            ? [{ label: 'Blog comments', children: meta.wogComment.map(([w, c]) => ({ label: w, count: c, cat: `Comment:${w}` })) }]
-            : []),
-          ...((meta.reddit || []).length
-            ? [{
-                label: 'Reddit', cat: 'RedditWoG',
-                count: (meta.reddit || []).reduce((s, [, c]) => s + c, 0),
-                children: meta.reddit.map(([sub, c]) => ({ label: 'r/' + sub, count: c, cat: `Reddit:${sub}` })),
-              }]
-            : []),
-          ...(wt.total
-            ? [{
-                label: 'WoG Thread', cat: 'WoGThread', count: wt.total,
-                children: (wt.origins || []).map(([o, c]) => ({ label: ORIGIN_LABELS[o] || o, count: c, cat: o })),
-              }]
-            : []),
-        ],
-      },
-    ];
+    // Word of God stays a dropdown (a deep tree); fiction gets the persistent bar.
+    const wogNode = {
+      label: 'Word of God',
+      children: [
+        ...((meta.wogComment || []).length
+          ? [{ label: 'Blog comments', children: meta.wogComment.map(([w, c]) => ({ label: w, count: c, cat: `Comment:${w}` })) }]
+          : []),
+        ...((meta.reddit || []).length
+          ? [{
+              label: 'Reddit', cat: 'RedditWoG',
+              count: (meta.reddit || []).reduce((s, [, c]) => s + c, 0),
+              children: meta.reddit.map(([sub, c]) => ({ label: 'r/' + sub, count: c, cat: `Reddit:${sub}` })),
+            }]
+          : []),
+        ...(wt.total
+          ? [{
+              label: 'SpaceBattles Word of God Thread', cat: 'WoGThread', count: wt.total,
+              children: (wt.origins || []).map(([o, c]) => ({ label: ORIGIN_LABELS[o] || o, count: c, cat: o })),
+            }]
+          : []),
+      ],
+    };
 
     const leafCats = (node) => (node.cat ? [node.cat] : node.children.flatMap(leafCats));
     const nodeCount = (node) => (node.cat ? node.count : node.children.reduce((s, c) => s + nodeCount(c), 0));
@@ -284,7 +316,24 @@
         `<div class="dd-kids"${collapsed ? ' hidden' : ''}>${node.children.map((c) => renderNode(c, depth + 1)).join('')}</div>` +
       `</div>`;
     }
-    srcPanel.innerHTML = tree.map((n) => renderNode(n, 0)).join('');
+    // Build the fiction bar: universe groups of work toggles, bookended by
+    // "Select all" and the Word of God dropdown button.
+    const fictionBar = fictionChildren.map((g) =>
+      `<div class="src-group" style="flex-grow:${g.children.length}">` +
+        `<button type="button" class="src-head" data-cats="${esc(leafCats(g).join('|'))}">${esc(g.label)}</button>` +
+        `<div class="src-works">${g.children.map((w) =>
+          `<button type="button" class="src-work" data-cats="${esc(w.cat)}">${esc(w.label)}</button>`).join('')}</div>` +
+      `</div>`).join('');
+    // The Sources popup: the fiction bar on top, the Word of God tree below.
+    srcPanel.innerHTML =
+      `<div class="source-bar" id="srcBar">` +
+        `<button type="button" class="src-all" id="srcAll">Select all</button>` +
+        fictionBar +
+      `</div>` +
+      `<div class="wog-head">Word of God</div>` +
+      `<div class="dd-tree">${wogNode.children.map((n) => renderNode(n, 1)).join('')}</div>`;
+    const srcBar = document.getElementById('srcBar');
+    const srcAll = document.getElementById('srcAll');
 
     // Expand/collapse on the caret. It's a <button> nested in the label, so per
     // spec clicking it does NOT toggle the label's checkbox.
@@ -297,12 +346,25 @@
     });
 
     // Reflect selectedCategories onto every checkbox (checked / indeterminate).
+    // Reflect selectedCategories onto the WoG dropdown checkboxes AND the bar.
     function refreshChecks() {
       srcPanel.querySelectorAll('input[type=checkbox]').forEach((cb) => {
         const cats = cb.dataset.cats ? cb.dataset.cats.split('|') : [];
         const sel = cats.filter((c) => selectedCategories.has(c)).length;
         cb.checked = sel > 0 && sel === cats.length;
         cb.indeterminate = sel > 0 && sel < cats.length;
+      });
+      // Nothing selected = everything (all normal). Once filtering, the picked
+      // works light up and the excluded ones dim.
+      const filtering = selectedCategories.size > 0;
+      srcBar.querySelectorAll('.src-work, .src-head').forEach((btn) => {
+        const cats = btn.dataset.cats.split('|');
+        const sel = cats.filter((c) => selectedCategories.has(c)).length;
+        const on = sel > 0 && sel === cats.length;
+        const partial = sel > 0 && sel < cats.length;
+        btn.classList.toggle('on', on);
+        btn.classList.toggle('partial', partial);
+        btn.classList.toggle('dim', filtering && !on && !partial);
       });
     }
     function updateSrcLabel() {
@@ -324,6 +386,22 @@
       if (!(cb instanceof HTMLInputElement)) return;
       (cb.dataset.cats ? cb.dataset.cats.split('|') : []).forEach((c) =>
         cb.checked ? selectedCategories.add(c) : selectedCategories.delete(c));
+      refreshChecks();
+      updateSrcLabel();
+      run();
+    });
+    // Fiction bar: toggle a single work, a whole universe (its header), or —
+    // via "Select all" — every work at once.
+    srcBar.addEventListener('click', (e) => {
+      const btn = e.target.closest('.src-all, .src-head, .src-work');
+      if (!btn) return;
+      if (btn.classList.contains('src-all')) {
+        selectedCategories.clear(); // reset to "everything"
+      } else {
+        const cats = btn.dataset.cats.split('|');
+        const allOn = cats.every((c) => selectedCategories.has(c));
+        cats.forEach((c) => allOn ? selectedCategories.delete(c) : selectedCategories.add(c));
+      }
       refreshChecks();
       updateSrcLabel();
       run();
