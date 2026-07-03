@@ -132,7 +132,7 @@
        grey, unknown grey w/ dashed outline (reads as "unverified" vs plain fan). */
     .c-wd { --pc: var(--c-wd); }
     .tier-canon { --pc: var(--c-green); } .tier-semicanon { --pc: var(--accent2); }
-    .tier-fanmade { --pc: var(--muted); }
+    .tier-draft { --pc: var(--muted); } .tier-fanmade { --pc: var(--muted); }
     .tier-unknown { --pc: var(--muted); border: 1px dashed color-mix(in srgb, var(--muted) 60%, transparent); }
     .r-date { color: var(--muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
     .r-context {
@@ -319,25 +319,31 @@
     // (cat "Ref:<work>:<tier>").
     // Tier rows say what they *are*: canon docs are rules & reference, his
     // semi-canon docs are the campaigns he ran (actual-play, canon-compatible).
-    const TIER_LABELS = { canon: 'Rules & reference', semicanon: 'Campaigns (semi-canon)', fanmade: 'Fan-made', unknown: 'Unknown' };
+    // Per-collection tier labels: Weaverdice splits into his rules/reference vs
+    // the campaigns he ran; elsewhere the generic tier names apply.
+    const TIER_LABELS = { canon: 'Canon', semicanon: 'Semi-canon', draft: 'Drafts', fanmade: 'Fan-made', unknown: 'Unknown' };
+    const TIER_LABELS_BY_WORK = { Weaverdice: { canon: 'Rules & reference', semicanon: 'Campaigns (semi-canon)' } };
+    const tierLabel = (work, tier) => (TIER_LABELS_BY_WORK[work] || {})[tier] || TIER_LABELS[tier] || tier;
     const refByWork = new Map();
     for (const [work, tier, c] of (meta.reference || [])) {
       if (!refByWork.has(work)) refByWork.set(work, []);
-      refByWork.get(work).push({ label: TIER_LABELS[tier] || tier, count: c, cat: `Ref:${work}:${tier}` });
+      refByWork.get(work).push({ label: tierLabel(work, tier), count: c, cat: `Ref:${work}:${tier}` });
     }
     const mkRefChild = ([work, tiers]) => tiers.length > 1
       ? { label: work, children: tiers }
       : { label: work, count: tiers[0].count, cat: `Ref:${work}` };
-    // Story prose (Drafts) gets its own section alongside the serials + WoG; the
-    // game/worldbuilding docs nest under Word of God as "Google Docs".
-    const DRAFT_WORKS = new Set(['Drafts']);
-    const gameChildren = [...refByWork].filter(([w]) => !DRAFT_WORKS.has(w)).map(mkRefChild);
-    const draftChildren = [...refByWork].filter(([w]) => DRAFT_WORKS.has(w)).map(mkRefChild);
-    const draftsNode = draftChildren.length ? { label: 'Drafts & Stories', children: draftChildren } : null;
+    // Reference collections group into top-level sections: Games (the three
+    // tabletop games), Short Fiction (snippets + drafts — its canon/draft tiers
+    // shown directly), and Extras (misc worldbuilding, tucked under Word of God).
+    const GAME_WORKS = ['Weaverdice', 'PactDice', 'PRT Quest'];
+    const gameChildren = [...refByWork].filter(([w]) => GAME_WORKS.includes(w)).map(mkRefChild);
+    const extraChildren = [...refByWork].filter(([w]) => w === 'Extras').map(mkRefChild);
+    const gamesNode = gameChildren.length ? { label: 'Games', children: gameChildren } : null;
+    const sfTiers = refByWork.get('Short Fiction');
+    const shortFicNode = sfTiers ? { label: 'Short Fiction', children: sfTiers } : null;
 
-    // Word of God tree: blog comments, Reddit, the SB thread, and — as another
-    // facet of Wildbow's word — his Google Docs (Weaverdice / PactDice / PRT Quest
-    // / Extras), nested as a "Google Docs" group.
+    // Word of God tree: blog comments, Reddit, the SB thread, and his misc
+    // worldbuilding docs grouped as "Other worldbuilding".
     const wogNode = {
       label: 'Word of God',
       children: [
@@ -357,7 +363,7 @@
               children: (wt.origins || []).map(([o, c]) => ({ label: ORIGIN_LABELS[o] || o, count: c, cat: o })),
             }]
           : []),
-        ...(gameChildren.length ? [{ label: 'Google Docs', children: gameChildren }] : []),
+        ...(extraChildren.length ? [{ label: 'Other worldbuilding', children: extraChildren }] : []),
       ],
     };
 
@@ -414,7 +420,8 @@
       // "Word of God" is a collapsible parent checkbox (selects all WoG); its
       // children (Blog comments / Reddit / WoG Thread) render collapsed under it.
       `<div class="wog-section" id="wogSection">${renderNode(wogNode, 0)}</div>` +
-      (draftsNode ? `<div class="wog-section" id="draftsSection">${renderNode(draftsNode, 0)}</div>` : '');
+      (gamesNode ? `<div class="wog-section" id="gamesSection">${renderNode(gamesNode, 0)}</div>` : '') +
+      (shortFicNode ? `<div class="wog-section" id="shortFicSection">${renderNode(shortFicNode, 0)}</div>` : '');
     const srcBar = document.getElementById('srcBar');
     const srcAll = document.getElementById('srcAll');
     const wogSection = document.getElementById('wogSection');
@@ -632,9 +639,9 @@
       const src = m.source || 'Comment';
       const workPill = work ? `<span class="pill ${catColor(work)}">${esc(work)}</span>` : '';
       // Canon is the default (unlabelled); only non-canon tiers wear a badge.
-      const TIER = { semicanon: ['Semi-canon', 'tier-semicanon'], fanmade: ['Fan-made', 'tier-fanmade'], unknown: ['Unknown', 'tier-unknown'] };
+      const TIER = { semicanon: ['Semi-canon', 'tier-semicanon'], draft: ['Draft', 'tier-draft'], fanmade: ['Fan-made', 'tier-fanmade'], unknown: ['Unknown', 'tier-unknown'] };
       const tierPill = TIER[m.tier] ? `<span class="pill ${TIER[m.tier][1]}">${TIER[m.tier][0]}</span>` : '';
-      const REFCOLOR = { Weaverdice: 'c-wd', PactDice: 'c-red', 'PRT Quest': 'c-yellow', Extras: 'c-grey', Drafts: 'c-purple' };
+      const REFCOLOR = { Weaverdice: 'c-wd', PactDice: 'c-red', 'PRT Quest': 'c-yellow', 'Short Fiction': 'c-purple', Extras: 'c-grey' };
       const pills = isRef
         ? `<span class="pill ${REFCOLOR[work] || 'c-wd'}">${esc(work || 'Weaverdice')}</span>${tierPill}`
         : !isWoG
