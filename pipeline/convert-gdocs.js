@@ -55,17 +55,24 @@ function sections(html, docTitle) {
   html = html.replace(/ (?:src|href)="data:[^"]*"/g, '');
   const body = parse(html).querySelector('body');
   if (!body) return [];
+  // Ids whose element is empty. A "-N"-suffixed heading whose base points at an
+  // empty element is a mis-styled paragraph-run: Google clustered several
+  // paragraph-headings onto one stub bookmark (h.xxx + h.xxx-1/-2/-3…), and those
+  // variants don't resolve as #heading deep-links (they fall to the doc top). A
+  // "-N" heading whose base is a *real* heading (two headings colliding on one
+  // bookmark, e.g. BRUTE's "Plate"/"Ogre") is a genuine heading — left alone.
+  const emptyId = new Set();
+  for (const el of body.querySelectorAll('[id]')) if (!clean(el.text)) emptyId.add(el.getAttribute('id'));
   const out = [];
   let cur = { anchor: '', heading: docTitle, parts: [] };
   for (const el of body.querySelectorAll('h1,h2,h3,p,li')) {
     const t = clean(el.text);
     const id = el.getAttribute('id') || '';
-    // A genuine heading is short AND has a clean anchor. Reject two mis-styling
-    // tells (Docs lets you apply a heading style to prose): over-long text, and
-    // a "-N"-suffixed id — Google clusters a run of paragraph-headings onto one
-    // bookmark as h.xxx-1/-2/-3…, and those suffixed anchors don't resolve as
-    // #heading deep-links (they fall to the doc top). Fold both into the body.
-    const isHeading = /^h[1-3]$/i.test(el.tagName) && t && t.length <= 100 && !/-\d+$/.test(id);
+    const sfx = id.match(/^(.*)-\d+$/);
+    const degenerate = sfx && emptyId.has(sfx[1]);
+    // A genuine heading is short (a paragraph styled as a heading is over-long)
+    // and not a degenerate clustered anchor. Fold anything else into the body.
+    const isHeading = /^h[1-3]$/i.test(el.tagName) && t && t.length <= 100 && !degenerate;
     if (isHeading) {
       if (cur.parts.length) out.push(cur);
       cur = { anchor: id, heading: t, parts: [] };
