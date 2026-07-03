@@ -59,14 +59,16 @@ function sections(html, docTitle) {
   let cur = { anchor: '', heading: docTitle, parts: [] };
   for (const el of body.querySelectorAll('h1,h2,h3,p,li')) {
     const t = clean(el.text);
-    // A genuine heading is short. An h1–h3 carrying a paragraph's worth of text is
-    // a mis-styled paragraph (Docs lets you apply a heading style to prose) — it
-    // also usually has no anchor id, so it'd deep-link nowhere. Treat it as
-    // content, not a section boundary.
-    const isHeading = /^h[1-3]$/i.test(el.tagName) && t && t.length <= 100;
+    const id = el.getAttribute('id') || '';
+    // A genuine heading is short AND has a clean anchor. Reject two mis-styling
+    // tells (Docs lets you apply a heading style to prose): over-long text, and
+    // a "-N"-suffixed id — Google clusters a run of paragraph-headings onto one
+    // bookmark as h.xxx-1/-2/-3…, and those suffixed anchors don't resolve as
+    // #heading deep-links (they fall to the doc top). Fold both into the body.
+    const isHeading = /^h[1-3]$/i.test(el.tagName) && t && t.length <= 100 && !/-\d+$/.test(id);
     if (isHeading) {
       if (cur.parts.length) out.push(cur);
-      cur = { anchor: el.getAttribute('id') || '', heading: t, parts: [] };
+      cur = { anchor: id, heading: t, parts: [] };
     } else if (t) {
       cur.parts.push(t);
     }
