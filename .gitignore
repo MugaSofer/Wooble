@@ -2,7 +2,12 @@
 CLAUDE.md
 
 node_modules/
-data/raw/
+data/raw/*
+# …but keep the hand-built curation inputs (metadata only — IDs/titles/tiers, no
+# story text): the verified WB-owned set, the expansion list, the tiered manifest.
+!data/raw/wb-owned.txt
+!data/raw/gdocs-expansion.json
+!data/raw/gdocs-manifest.json
 data/corpus/
 data/wog-batches/
 data/wog-scores-parts/

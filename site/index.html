@@ -8,7 +8,7 @@
     :root {
       --bg: #0f1115; --panel: #171a21; --ink: #e8eaed; --muted: #9aa0aa;
       --accent: #E95D5D; --accent2: #E9D45D; --line: #2a2f3a;
-      --c-green: #6bcb77; --c-blue: #5d9cec; --c-purple: #b48ce8;
+      --c-green: #6bcb77; --c-blue: #5d9cec; --c-purple: #b48ce8; --c-wd: #e0894d;
     }
     * { box-sizing: border-box; }
     body {
@@ -120,6 +120,12 @@
     /* Colour-coding: works by universe + a few WoG sources; everything else grey. */
     .c-yellow { --pc: var(--accent2); } .c-red { --pc: var(--accent); }
     .c-green { --pc: var(--c-green); } .c-blue { --pc: var(--c-blue); } .c-purple { --pc: var(--c-purple); } .c-grey { --pc: var(--ink); }
+    /* Weaverdice + provenance-tier badges: canon green, semi-canon amber, fan-made
+       grey, unknown grey w/ dashed outline (reads as "unverified" vs plain fan). */
+    .c-wd { --pc: var(--c-wd); }
+    .tier-canon { --pc: var(--c-green); } .tier-semicanon { --pc: var(--accent2); }
+    .tier-fanmade { --pc: var(--muted); }
+    .tier-unknown { --pc: var(--muted); border: 1px dashed color-mix(in srgb, var(--muted) 60%, transparent); }
     .r-date { color: var(--muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
     .r-context {
       color: var(--muted); font-style: italic; font-size: .92rem; line-height: 1.5;
@@ -299,7 +305,31 @@
     const standalone = (meta.fiction || []).filter(([w]) => !grouped.has(w)).map(([w, c]) => ({ label: w, count: c, cat: w }));
     if (standalone.length) fictionChildren.push({ label: 'Standalone', children: standalone });
 
-    // Word of God stays a dropdown (a deep tree); fiction gets the persistent bar.
+    // Reference collections from build metadata: Weaverdice / PactDice / PRT Quest
+    // / Extras (game & worldbuilding docs) and Drafts (story prose). A single-tier
+    // collection is a leaf (cat "Ref:<work>"); multi-tier ones nest tier children
+    // (cat "Ref:<work>:<tier>").
+    // Tier rows say what they *are*: canon docs are rules & reference, his
+    // semi-canon docs are the campaigns he ran (actual-play, canon-compatible).
+    const TIER_LABELS = { canon: 'Rules & reference', semicanon: 'Campaigns (semi-canon)', fanmade: 'Fan-made', unknown: 'Unknown' };
+    const refByWork = new Map();
+    for (const [work, tier, c] of (meta.reference || [])) {
+      if (!refByWork.has(work)) refByWork.set(work, []);
+      refByWork.get(work).push({ label: TIER_LABELS[tier] || tier, count: c, cat: `Ref:${work}:${tier}` });
+    }
+    const mkRefChild = ([work, tiers]) => tiers.length > 1
+      ? { label: work, children: tiers }
+      : { label: work, count: tiers[0].count, cat: `Ref:${work}` };
+    // Story prose (Drafts) gets its own section alongside the serials + WoG; the
+    // game/worldbuilding docs nest under Word of God as "Google Docs".
+    const DRAFT_WORKS = new Set(['Drafts']);
+    const gameChildren = [...refByWork].filter(([w]) => !DRAFT_WORKS.has(w)).map(mkRefChild);
+    const draftChildren = [...refByWork].filter(([w]) => DRAFT_WORKS.has(w)).map(mkRefChild);
+    const draftsNode = draftChildren.length ? { label: 'Drafts & Stories', children: draftChildren } : null;
+
+    // Word of God tree: blog comments, Reddit, the SB thread, and — as another
+    // facet of Wildbow's word — his Google Docs (Weaverdice / PactDice / PRT Quest
+    // / Extras), nested as a "Google Docs" group.
     const wogNode = {
       label: 'Word of God',
       children: [
@@ -319,6 +349,7 @@
               children: (wt.origins || []).map(([o, c]) => ({ label: ORIGIN_LABELS[o] || o, count: c, cat: o })),
             }]
           : []),
+        ...(gameChildren.length ? [{ label: 'Google Docs', children: gameChildren }] : []),
       ],
     };
 
@@ -339,11 +370,30 @@
         `<div class="dd-kids"${collapsed ? ' hidden' : ''}>${node.children.map((c) => renderNode(c, depth + 1)).join('')}</div>` +
       `</div>`;
     }
+    // A group header selects that universe's whole footprint across sources — not
+    // just its serials, but their blog comments, and (for the mapped universes)
+    // the matching Reddit WoG + Google Docs. So "Otherverse" grabs Pact/Pale +
+    // their comments + PactDice; "Parahumans" grabs Worm/Ward + comments + all the
+    // Reddit WoG + Weaverdice + PRT Quest. Individual work buttons stay serial-only.
+    const UNIVERSE_REF = { Parahumans: ['Weaverdice', 'PRT Quest'], Otherverse: ['PactDice'] };
+    const UNIVERSE_REDDIT = { Parahumans: (meta.reddit || []).map(([s]) => `Reddit:${s}`) };
+    const UNIVERSE_XWORKS = { Parahumans: ['Glow-worm'] }; // comment-works beyond the serials
+    function headerCats(g) {
+      const works = g.children.map((c) => c.label);
+      const cats = new Set(g.children.flatMap(leafCats)); // the serials
+      for (const [w] of (meta.wogComment || [])) if (works.includes(w) || (UNIVERSE_XWORKS[g.label] || []).includes(w)) cats.add(`Comment:${w}`);
+      for (const r of (UNIVERSE_REDDIT[g.label] || [])) cats.add(r);
+      for (const work of (UNIVERSE_REF[g.label] || [])) {
+        const tiers = refByWork.get(work);
+        if (tiers) tiers.length > 1 ? tiers.forEach((t) => cats.add(t.cat)) : cats.add(`Ref:${work}`);
+      }
+      return [...cats];
+    }
     // Build the fiction bar: universe groups of work toggles, bookended by
     // "Select all" and the Word of God dropdown button.
     const fictionBar = fictionChildren.map((g) =>
       `<div class="src-group" style="flex-grow:${g.children.length}">` +
-        `<button type="button" class="src-head ${catColor(g.label)}" data-cats="${esc(leafCats(g).join('|'))}">${esc(g.label)}</button>` +
+        `<button type="button" class="src-head ${catColor(g.label)}" data-cats="${esc(headerCats(g).join('|'))}">${esc(g.label)}</button>` +
         `<div class="src-works">${g.children.map((w) =>
           `<button type="button" class="src-work ${catColor(w.label)}" data-cats="${esc(w.cat)}">${esc(w.label)}</button>`).join('')}</div>` +
       `</div>`).join('');
@@ -355,7 +405,8 @@
       `</div>` +
       // "Word of God" is a collapsible parent checkbox (selects all WoG); its
       // children (Blog comments / Reddit / WoG Thread) render collapsed under it.
-      `<div class="wog-section" id="wogSection">${renderNode(wogNode, 0)}</div>`;
+      `<div class="wog-section" id="wogSection">${renderNode(wogNode, 0)}</div>` +
+      (draftsNode ? `<div class="wog-section" id="draftsSection">${renderNode(draftsNode, 0)}</div>` : '');
     const srcBar = document.getElementById('srcBar');
     const srcAll = document.getElementById('srcAll');
     const wogSection = document.getElementById('wogSection');
@@ -374,22 +425,24 @@
     // Reflect selectedCategories onto the WoG dropdown checkboxes AND the bar.
     function refreshChecks() {
       const filtering = selectedCategories.size > 0;
-      let anyWog = false;
       const items = [];
+      const sectionActive = new Map(); // section el -> any of its items selected
       srcPanel.querySelectorAll('input[type=checkbox]').forEach((cb) => {
         const cats = cb.dataset.cats ? cb.dataset.cats.split('|') : [];
         const sel = cats.filter((c) => selectedCategories.has(c)).length;
         cb.checked = sel > 0 && sel === cats.length;
         cb.indeterminate = sel > 0 && sel < cats.length;
-        if (sel > 0) anyWog = true;
-        items.push({ cb, sel });
+        const section = cb.closest('.wog-section');
+        if (sel > 0 && section) sectionActive.set(section, true);
+        items.push({ cb, sel, section });
       });
-      // Fiction-only filter → the whole WoG section dims (excluded). When some WoG
-      // IS selected, dim just the unselected WoG items — an item counts as included
-      // if its own cats are selected, or a covering single-cat ancestor (Reddit /
-      // WoG Thread) is. (Mutually exclusive with the section dim, so no compounding.)
-      wogSection.classList.toggle('dim', filtering && !anyWog);
-      for (const { cb, sel } of items) {
+      // Each tree section (WoG, Weaverdice) dims wholesale when filtering excludes
+      // it. When some of it IS selected, dim just the unselected items — an item
+      // counts as included if its own cats are selected, or a covering single-cat
+      // ancestor (Reddit / WoG Thread) is.
+      srcPanel.querySelectorAll('.wog-section').forEach((sec) =>
+        sec.classList.toggle('dim', filtering && !sectionActive.get(sec)));
+      for (const { cb, sel, section } of items) {
         const label = cb.closest('.dd-item');
         if (!label) continue;
         let included = sel > 0;
@@ -397,7 +450,7 @@
           const ac = a.querySelector('input')?.dataset.cats || '';
           if (ac && !ac.includes('|') && selectedCategories.has(ac)) included = true;
         }
-        label.classList.toggle('dim', filtering && anyWog && !included);
+        label.classList.toggle('dim', filtering && sectionActive.get(section) && !included);
       }
       // Nothing selected = everything (all normal). Once filtering, the picked
       // works light up and the excluded ones dim.
@@ -563,12 +616,20 @@
       const work = m.work || '';
       const date = m.date || '';
       const isWoG = m.type === 'WoG';
+      const isRef = m.type === 'Reference';
       // Fiction wears its work pill; WoG shows only its source — never a work
       // (it isn't part of a serial). Reddit WoG names its subreddit ("/r/weaverdice").
+      // Weaverdice reference shows a "Weaverdice" pill + its provenance tier badge.
       const isReddit = isWoG && m.source === 'Reddit' && m.subreddit;
       const src = m.source || 'Comment';
       const workPill = work ? `<span class="pill ${catColor(work)}">${esc(work)}</span>` : '';
-      const pills = !isWoG
+      // Canon is the default (unlabelled); only non-canon tiers wear a badge.
+      const TIER = { semicanon: ['Semi-canon', 'tier-semicanon'], fanmade: ['Fan-made', 'tier-fanmade'], unknown: ['Unknown', 'tier-unknown'] };
+      const tierPill = TIER[m.tier] ? `<span class="pill sub-pill ${TIER[m.tier][1]}">${TIER[m.tier][0]}</span>` : '';
+      const REFCOLOR = { Weaverdice: 'c-wd', PactDice: 'c-red', 'PRT Quest': 'c-yellow', Extras: 'c-grey', Drafts: 'c-purple' };
+      const pills = isRef
+        ? `<span class="pill ${REFCOLOR[work] || 'c-wd'}">${esc(work || 'Weaverdice')}</span>${tierPill}`
+        : !isWoG
         ? workPill
         : isReddit
           ? `<span class="pill sub-pill ${catColor('Reddit')}">/r/${esc(m.subreddit)}</span>`

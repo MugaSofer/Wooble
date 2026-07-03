@@ -20,6 +20,10 @@ const esc = (s) =>
 // comment belongs to both its work and the thread — one record, two memberships.
 function categoriesOf(rec) {
   const type = rec.type || 'Fiction';
+  // Reference docs: the collection bucket (Weaverdice / PactDice / PRT Quest /
+  // Extras) plus its provenance tier, so the UI can filter a whole collection or
+  // by canon / semi-canon / fan-made within it.
+  if (type === 'Reference') return [`Ref:${rec.work}`, `Ref:${rec.work}:${rec.tier}`];
   if (type !== 'WoG') return [rec.work];
   if (rec.source === 'Comment') return rec.cited ? [`Comment:${rec.work}`, 'WoGThread', 'CitedComment'] : [`Comment:${rec.work}`];
   // The bulk Reddit pull is its own WoG source, grouped by subreddit. (Its
@@ -43,7 +47,12 @@ function pageHtml(rec) {
   // WoG indexes the question (context) and Wildbow's answer together; fiction
   // indexes the chapter prose. Extra meta lets the UI render WoG distinctly.
   let body, extraMeta = '';
-  if (type === 'WoG') {
+  if (type === 'Reference') {
+    body = rec.text.split('\n\n').filter(Boolean).map((p) => `    <p>${esc(p)}</p>`).join('\n');
+    extraMeta =
+      `    <span data-pagefind-meta="tier">${esc(rec.tier)}</span>\n` +
+      `    <span data-pagefind-meta="doc_title">${esc(rec.docTitle ?? '')}</span>\n`;
+  } else if (type === 'WoG') {
     // Body (searchable): de-weighted question + Wildbow's answer, so a topic
     // raised only in the question still surfaces his reply without outranking
     // real answers. The question and answer are ALSO emitted as meta in the
@@ -171,9 +180,10 @@ async function main() {
   try { scores = JSON.parse(await readFile('data/wog-scores.json', 'utf8')); } catch { /* not scored yet */ }
   for (const r of records) if (r.type === 'WoG' && (r.source === 'Comment' || r.source === 'Reddit') && scores[r.id]) r.score = scores[r.id];
 
-  let total = 0, skipped = 0, droppedNonCanon = 0;
+  let total = 0, skipped = 0, droppedNonCanon = 0, droppedFan = 0;
   const years = new Set();
   const fiction = new Map();      // work -> fiction chapter count
+  const reference = new Map();    // "collection\ttier" -> reference-section count
   const wogComment = new Map();   // work -> blog-comment WoG count
   const redditWoG = new Map();    // subreddit -> served bulk-reddit WoG count
   const threadOrigins = new Map(); // origin -> count, within the WoG thread
@@ -181,19 +191,25 @@ async function main() {
 
   for (const rec of records) {
     const isWoG = (rec.type || 'Fiction') === 'WoG';
-    if (isWoG ? rec.wordCount === 0 : rec.wordCount < MIN_WORDS) { skipped++; continue; }
+    const isRef = rec.type === 'Reference';
+    const floor = isWoG ? 1 : isRef ? 20 : MIN_WORDS; // ref sections are shorter than chapters
+    if (rec.wordCount < floor) { skipped++; continue; }
     // Serve curated WoG in full (fiction, repository quotes, cited entries). The
     // Haiku-classified dumps — blog comments and the bulk Reddit pull — are the
     // noisy sources, so they're filtered to the "canon" tag; everything else
     // Haiku tagged stays in the archives (corpus + wog-scores.json), unserved.
     const haikuGated = rec.source === 'Comment' || (rec.source === 'Reddit' && String(rec.id).startsWith('wog:reddit:'));
     if (isWoG && haikuGated && !rec.cited && rec.score?.category !== 'canon') { droppedNonCanon++; continue; }
+    // Only Wildbow's own docs are served; community/fan-made reference stays in
+    // the archive (corpus file) but isn't indexed. Canon + his campaigns qualify.
+    if (isRef && rec.tier !== 'canon' && rec.tier !== 'semicanon') { droppedFan++; continue; }
     const dir = join(BUILD_DIR, rec.workSlug);
     await mkdir(dir, { recursive: true });
     const slug = rec.id.split(':').slice(1).join(':').replace(/[^a-z0-9-]+/gi, '-');
     await writeFile(join(dir, `${slug}.html`), pageHtml(rec));
     total++;
     if (rec.date) years.add(rec.date.slice(0, 4));
+    if (isRef) { const k = rec.work + '\t' + rec.tier; reference.set(k, (reference.get(k) ?? 0) + 1); continue; }
     if (!isWoG) { fiction.set(rec.work, (fiction.get(rec.work) ?? 0) + 1); continue; }
     if (rec.source === 'Comment') wogComment.set(rec.work, (wogComment.get(rec.work) ?? 0) + 1);
     if (rec.source === 'Reddit' && String(rec.id).startsWith('wog:reddit:')) redditWoG.set(rec.subreddit, (redditWoG.get(rec.subreddit) ?? 0) + 1);
@@ -209,8 +225,12 @@ async function main() {
   const byWork = (a, b) => ORDER.indexOf(a[0]) - ORDER.indexOf(b[0]);
   const ORIGIN_ORDER = ['CitedComment', 'Reddit', 'SufficientVelocity', 'SpaceBattles', 'Other', 'WoGThreadOnly'];
   const SUB_ORDER = ['Parahumans', 'Weaverdice', 'whowouldwin', 'WormFanfic'];
+  const TIER_ORDER = ['canon', 'semicanon', 'fanmade', 'unknown'];
+  const REF_ORDER = ['Weaverdice', 'PactDice', 'PRT Quest', 'Extras', 'Drafts'];
   const meta = {
     fiction: [...fiction].sort(byWork),
+    reference: [...reference].map(([k, c]) => { const [w, t] = k.split('\t'); return [w, t, c]; })
+      .sort((a, b) => (REF_ORDER.indexOf(a[0]) - REF_ORDER.indexOf(b[0])) || (TIER_ORDER.indexOf(a[1]) - TIER_ORDER.indexOf(b[1]))),
     wogComment: [...wogComment].sort(byWork),
     reddit: [...redditWoG].sort((a, b) => SUB_ORDER.indexOf(a[0]) - SUB_ORDER.indexOf(b[0])),
     wogThread: { total: threadTotal, origins: [...threadOrigins].sort((a, b) => ORIGIN_ORDER.indexOf(a[0]) - ORIGIN_ORDER.indexOf(b[0])) },
@@ -220,8 +240,8 @@ async function main() {
   await mkdir('site', { recursive: true });
   await writeFile(join('site', 'meta.json'), JSON.stringify(meta));
 
-  console.log(`Wrote ${total} pages to ${BUILD_DIR}/ (skipped ${skipped} short, ${droppedNonCanon} non-canon comments archived).`);
-  console.log(`meta.json: ${meta.fiction.length} works, ${meta.wogComment.length} comment-works, reddit [${meta.reddit.map((r) => r.join(':')).join(', ')}], WoG-thread ${threadTotal} (${meta.wogThread.origins.map((o) => o.join(':')).join(', ')}), years ${meta.years[0]}–${meta.years.at(-1)}.`);
+  console.log(`Wrote ${total} pages to ${BUILD_DIR}/ (skipped ${skipped} short, ${droppedNonCanon} non-canon comments + ${droppedFan} fan-made docs archived).`);
+  console.log(`meta.json: ${meta.fiction.length} works, Reference [${meta.reference.map((r) => r.join(':')).join(', ')}], ${meta.wogComment.length} comment-works, reddit [${meta.reddit.map((r) => r.join(':')).join(', ')}], WoG-thread ${threadTotal} (${meta.wogThread.origins.map((o) => o.join(':')).join(', ')}), years ${meta.years[0]}–${meta.years.at(-1)}.`);
 }
 
 main().catch((e) => {
