@@ -58,12 +58,17 @@ function sections(html, docTitle) {
   const out = [];
   let cur = { anchor: '', heading: docTitle, parts: [] };
   for (const el of body.querySelectorAll('h1,h2,h3,p,li')) {
-    if (/^h[1-3]$/i.test(el.tagName)) {
+    const t = clean(el.text);
+    // A genuine heading is short. An h1–h3 carrying a paragraph's worth of text is
+    // a mis-styled paragraph (Docs lets you apply a heading style to prose) — it
+    // also usually has no anchor id, so it'd deep-link nowhere. Treat it as
+    // content, not a section boundary.
+    const isHeading = /^h[1-3]$/i.test(el.tagName) && t && t.length <= 100;
+    if (isHeading) {
       if (cur.parts.length) out.push(cur);
-      cur = { anchor: el.getAttribute('id') || '', heading: clean(el.text) || docTitle, parts: [] };
-    } else {
-      const t = clean(el.text);
-      if (t) cur.parts.push(t);
+      cur = { anchor: el.getAttribute('id') || '', heading: t, parts: [] };
+    } else if (t) {
+      cur.parts.push(t);
     }
   }
   if (cur.parts.length) out.push(cur);
