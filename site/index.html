@@ -625,7 +625,7 @@
       const workPill = work ? `<span class="pill ${catColor(work)}">${esc(work)}</span>` : '';
       // Canon is the default (unlabelled); only non-canon tiers wear a badge.
       const TIER = { semicanon: ['Semi-canon', 'tier-semicanon'], fanmade: ['Fan-made', 'tier-fanmade'], unknown: ['Unknown', 'tier-unknown'] };
-      const tierPill = TIER[m.tier] ? `<span class="pill sub-pill ${TIER[m.tier][1]}">${TIER[m.tier][0]}</span>` : '';
+      const tierPill = TIER[m.tier] ? `<span class="pill ${TIER[m.tier][1]}">${TIER[m.tier][0]}</span>` : '';
       const REFCOLOR = { Weaverdice: 'c-wd', PactDice: 'c-red', 'PRT Quest': 'c-yellow', Extras: 'c-grey', Drafts: 'c-purple' };
       const pills = isRef
         ? `<span class="pill ${REFCOLOR[work] || 'c-wd'}">${esc(work || 'Weaverdice')}</span>${tierPill}`
