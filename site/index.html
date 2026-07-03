@@ -66,9 +66,11 @@
     .dd-twirl { flex: 0 0 1.1rem; width: 1.1rem; }
     .dd-caret {
       background: none; border: none; color: var(--muted); cursor: pointer;
-      padding: 0; font-size: .6rem; line-height: 1; text-align: center;
+      padding: 0; font-size: .8rem; line-height: 1; text-align: center;
     }
-    .dd-caret::before { content: '▶'; display: inline-block; transition: transform .12s; }
+    /* U+25B8 (small triangle, text-only) not U+25B6 (▶, has an emoji variant that
+       Samsung/Android render as a blue emoji). Matches the ▾ on the dd buttons. */
+    .dd-caret::before { content: '▸'; display: inline-block; transition: transform .12s; }
     .dd-caret.open::before { transform: rotate(90deg); }
     .dd-kids { padding-left: 1.15rem; }
     .dd-kids[hidden] { display: none; }
