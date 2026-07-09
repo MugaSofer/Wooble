@@ -341,7 +341,9 @@
     // shown directly), and Extras (misc worldbuilding, tucked under Word of God).
     const GAME_WORKS = ['Weaverdice', 'PactDice', 'PRT Quest', 'Game Concepts'];
     const gameChildren = [...refByWork].filter(([w]) => GAME_WORKS.includes(w)).map(mkRefChild);
-    const extraChildren = [...refByWork].filter(([w]) => w === 'Extras').map(mkRefChild);
+    // "Other worldbuilding" (Extras) sub-divides by the serial/setting each doc is
+    // about — a leaf per setting (Parahumans capes, Twig/Ward/Pale art & notes).
+    const extraChildren = (meta.extraSettings || []).map(([setting, count]) => ({ label: setting, count, cat: `Extras:${setting}` }));
     const gamesNode = gameChildren.length ? { label: 'Games', children: gameChildren } : null;
     // Short Fiction is a small 2-level tree — category › source — over the record
     // tiers. Stories is a group ready for more sources; Semi-canon (the bonus
@@ -430,6 +432,11 @@
       Parahumans: ['Ref:Short Fiction:semicanon', 'Ref:Short Fiction:draft'],
       Otherverse: ['Ref:Short Fiction:canon', 'Ref:Short Fiction:dream'],
     };
+    // Other-worldbuilding settings that belong to each universe (Twig stands alone).
+    const UNIVERSE_EXTRA = {
+      Parahumans: ['Extras:Parahumans', 'Extras:Ward'],
+      Otherverse: ['Extras:Pale'],
+    };
     function headerCats(g) {
       const works = g.children.map((c) => c.label);
       const cats = new Set(g.children.flatMap(leafCats)); // the serials
@@ -440,6 +447,7 @@
         if (tiers) tiers.length > 1 ? tiers.forEach((t) => cats.add(t.cat)) : cats.add(`Ref:${work}`);
       }
       for (const c of (UNIVERSE_SF[g.label] || [])) cats.add(c);
+      for (const c of (UNIVERSE_EXTRA[g.label] || [])) cats.add(c);
       return [...cats];
     }
     // Build the fiction bar: universe groups of work toggles, bookended by

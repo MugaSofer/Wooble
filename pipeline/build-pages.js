@@ -37,6 +37,8 @@ function categoriesOf(rec) {
     const cats = [`Ref:${rec.work}`, `Ref:${rec.work}:${rec.tier}`];
     // Otherverse shorts get a per-doc filter so Poke/Pâté are separate tree leaves.
     if (rec.work === 'Short Fiction' && rec.tier === 'canon') cats.push(`SFdoc:${rec.docTitle}`);
+    // Extras (Other worldbuilding) sub-divide by the serial/setting each doc is about.
+    if (rec.work === 'Extras' && rec.setting) cats.push(`Extras:${rec.setting}`);
     return cats;
   }
   if (type !== 'WoG') return [rec.work];
@@ -202,6 +204,7 @@ async function main() {
   const fiction = new Map();      // work -> fiction chapter count
   const reference = new Map();    // "collection\ttier" -> reference-section count
   const otherverseShorts = new Map(); // Short-Fiction canon docTitle -> record count
+  const extraSettings = new Map();    // Extras setting (serial) -> record count
   const wogComment = new Map();   // work -> blog-comment WoG count
   const redditWoG = new Map();    // subreddit -> served bulk-reddit WoG count
   const threadOrigins = new Map(); // origin -> count, within the WoG thread
@@ -233,6 +236,7 @@ async function main() {
     if (isRef) {
       const k = rec.work + '\t' + rec.tier; reference.set(k, (reference.get(k) ?? 0) + 1);
       if (rec.work === 'Short Fiction' && rec.tier === 'canon') otherverseShorts.set(rec.docTitle, (otherverseShorts.get(rec.docTitle) ?? 0) + 1);
+      if (rec.work === 'Extras' && rec.setting) extraSettings.set(rec.setting, (extraSettings.get(rec.setting) ?? 0) + 1);
       continue;
     }
     if (!isWoG) { fiction.set(rec.work, (fiction.get(rec.work) ?? 0) + 1); continue; }
@@ -252,11 +256,13 @@ async function main() {
   const SUB_ORDER = ['Parahumans', 'Weaverdice', 'whowouldwin', 'WormFanfic'];
   const TIER_ORDER = ['canon', 'semicanon', 'dream', 'story', 'sample', 'draft', 'uncertain', 'fanmade', 'unknown'];
   const REF_ORDER = ['Weaverdice', 'PactDice', 'PRT Quest', 'Short Fiction', 'Game Concepts', 'Extras'];
+  const EXTRA_SETTING_ORDER = ['Parahumans', 'Twig', 'Ward', 'Pale'];
   const meta = {
     fiction: [...fiction].sort(byWork),
     reference: [...reference].map(([k, c]) => { const [w, t] = k.split('\t'); return [w, t, c]; })
       .sort((a, b) => (REF_ORDER.indexOf(a[0]) - REF_ORDER.indexOf(b[0])) || (TIER_ORDER.indexOf(a[1]) - TIER_ORDER.indexOf(b[1]))),
     otherverseShorts: [...otherverseShorts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])),
+    extraSettings: [...extraSettings].sort((a, b) => (EXTRA_SETTING_ORDER.indexOf(a[0]) + 1 || 99) - (EXTRA_SETTING_ORDER.indexOf(b[0]) + 1 || 99)),
     wogComment: [...wogComment].sort(byWork),
     reddit: [...redditWoG].sort((a, b) => SUB_ORDER.indexOf(a[0]) - SUB_ORDER.indexOf(b[0])),
     wogThread: { total: threadTotal, origins: [...threadOrigins].sort((a, b) => ORIGIN_ORDER.indexOf(a[0]) - ORIGIN_ORDER.indexOf(b[0])) },

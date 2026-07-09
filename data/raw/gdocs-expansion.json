@@ -272,8 +272,9 @@
   {
     "id": "1aaMJqL0HFf_zQ-PSU5hjIs0m71XP-hHmCYAJzXzQl3k",
     "title": "100 Years Lost: Special Notes",
-    "work": "Weaverdice",
-    "tier": "canon"
+    "work": "Extras",
+    "tier": "canon",
+    "setting": "Pale"
   },
   {
     "id": "1eqZhXOQCqu8Ybdu9RGYsOhELALfSdacwAHx5AQvnD5w",
@@ -327,19 +328,22 @@
     "id": "1BwDb7YxQBnppE4cMCS3r_Hb8k-z49RCLlxsuq5kIaxo",
     "title": "Twig: Aesthetic & Art",
     "work": "Extras",
-    "tier": "canon"
+    "tier": "canon",
+    "setting": "Twig"
   },
   {
     "id": "1xSnw3o_oKi9ZrTPrI4BupY6nYDhq0opWgFWaCJGFy2Y",
     "title": "Ward: Art Direction (character notes)",
     "work": "Extras",
-    "tier": "canon"
+    "tier": "canon",
+    "setting": "Ward"
   },
   {
     "id": "1-ZNgmmip08nOfgHPUsCQkNRpGeBiGxP16OgMjG_GKKE",
     "title": "Pale: Header Art Commission",
     "work": "Extras",
-    "tier": "canon"
+    "tier": "canon",
+    "setting": "Pale"
   },
   {
     "id": "1w-q8_B8O1lCKqgPPotel0iTw97Y_WFRc_8OwENjeEY4",

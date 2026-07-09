@@ -127,6 +127,7 @@ async function main() {
         workSlug,
         type: 'Reference',
         tier: doc.tier,
+        setting: doc.setting || '',
         docTitle: doc.title,
         title: use.length > 1 && s.heading && s.heading !== doc.title ? `${doc.title} — ${s.heading}` : doc.title,
         heading: s.heading,

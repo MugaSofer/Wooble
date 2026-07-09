@@ -103,7 +103,7 @@ const PLIST = '1pgn9rgYutpBqJg1lSBP3NHnq9WK4ToLq9K4ys_I4cRc';
     const text = lines.join('\n\n');
     records.push({
       id: `sheet:plist:${rn}`, work: 'Extras', workSlug: 'extras', type: 'Reference',
-      tier: 'canon', docTitle: 'Parahuman Classification List',
+      tier: 'canon', setting: 'Parahumans', docTitle: 'Parahuman Classification List',
       title: real ? `${name} (${real})` : name,
       heading: name, text, url: rowLink(PLIST, rn), date: '', wordCount: words(text),
     });
