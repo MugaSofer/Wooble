@@ -16,15 +16,22 @@ let tagged = {};
 try { tagged = JSON.parse(await readFile('data/wog-serial-tags.json', 'utf8')); } catch {}
 const reddit = JSON.parse(await readFile('data/corpus/wog-reddit.json', 'utf8'));
 
+// Prefer the served-untagged list build-pages exports (catches cited-non-canon
+// records that aren't category:canon but ARE served); fall back to canon-only on
+// a first run before any build has produced the list.
+let servedUntagged = null;
+try { servedUntagged = new Set(JSON.parse(await readFile('data/wog-served-untagged.json', 'utf8'))); } catch {}
+
 // group -> candidate context is handled in the classifier prompt; here we just
-// split the two mixed subs into their own batch streams.
-const GROUPS = { para: 'Parahumans', wd: 'Weaverdice' };
+// split the Weaverdice sub (its own game candidates) from everything else.
+const GROUPS = { para: 'Parahumans+', wd: 'Weaverdice' };
 const buckets = { para: [], wd: [] };
 for (const r of reddit) {
-  if (scores[r.id]?.category !== 'canon') continue;      // served (canon) only
-  if (tagged[r.id]) continue;                            // already attributed
-  if (r.subreddit === 'Parahumans') buckets.para.push(r);
-  else if (r.subreddit === 'Weaverdice') buckets.wd.push(r);
+  const pick = servedUntagged ? servedUntagged.has(r.id) : (scores[r.id]?.category === 'canon');
+  if (!pick) continue;
+  if (tagged[r.id]?.length) continue;                    // already has a real tag; re-do empties
+  if (r.subreddit === 'Weaverdice') buckets.wd.push(r);
+  else buckets.para.push(r);
 }
 
 await rm(BATCH_DIR, { recursive: true, force: true });

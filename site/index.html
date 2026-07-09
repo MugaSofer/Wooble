@@ -378,17 +378,27 @@
 
     // Word of God tree: blog comments, Reddit, the SB thread, and his misc
     // worldbuilding docs grouped as "Other worldbuilding".
-    // Reddit WoG: r/Parahumans & r/Weaverdice are mixed, so each shows Haiku-
-    // attributed serial children (the parent checkbox still selects the whole sub;
-    // children narrow to a serial via its WoGtag). Single-serial subs stay leaves.
-    const SERIAL_LABEL = { Worm: 'Worm', Ward: 'Ward', Pact: 'Pact', Twig: 'Twig', Pale: 'Pale', Claw: 'Claw', Seek: 'Seek', Weaverdice: 'Weaverdice', PactDice: 'PactDice', Parahumans: 'Parahumans (general)', Otherverse: 'Otherverse (general)', Other: 'Other / unclear' };
-    const SERIAL_ORDER = ['Worm', 'Ward', 'Pact', 'Pale', 'Twig', 'Claw', 'Seek', 'Weaverdice', 'PactDice', 'Parahumans', 'Otherverse', 'Other'];
-    const redditSerialBySub = {};
-    for (const [sub, tok, c] of (meta.redditSerial || [])) (redditSerialBySub[sub] = redditSerialBySub[sub] || []).push([tok, c]);
-    const redditChild = ([sub, c]) => {
-      const ser = (redditSerialBySub[sub] || []).slice().sort((a, b) => (SERIAL_ORDER.indexOf(a[0]) + 1 || 99) - (SERIAL_ORDER.indexOf(b[0]) + 1 || 99));
-      if (ser.length > 1) return { label: 'r/' + sub, cat: `Reddit:${sub}`, count: c, children: ser.map(([tok, n]) => ({ label: SERIAL_LABEL[tok] || tok, count: n, cat: `WoGtag:${tok}` })) };
-      return { label: 'r/' + sub, count: c, cat: `Reddit:${sub}` };
+    // Reddit WoG is grouped by what each post is ABOUT (its Haiku-attributed
+    // serial), not which subreddit it was posted in — since r/Parahumans is a
+    // general hub. Serials nest under their universe: Parahumans › Worm/Ward/…,
+    // Otherverse › Pact/Pale/…; Twig/Claw/Seek and Other stand alone.
+    const SERIAL_LABEL = { Worm: 'Worm', Ward: 'Ward', Pact: 'Pact', Twig: 'Twig', Pale: 'Pale', Claw: 'Claw', Seek: 'Seek', Weaverdice: 'Weaverdice', PactDice: 'PactDice', Parahumans: 'General', Otherverse: 'General', Other: 'Other / unclear' };
+    const UNIV_OF = { Worm: 'Parahumans', Ward: 'Parahumans', Parahumans: 'Parahumans', Weaverdice: 'Parahumans', Pact: 'Otherverse', Pale: 'Otherverse', Otherverse: 'Otherverse', PactDice: 'Otherverse' };
+    const UNIV_ORDER = ['Parahumans', 'Otherverse'];
+    const TOK_ORDER = ['Worm', 'Ward', 'Parahumans', 'Weaverdice', 'Pact', 'Pale', 'Otherverse', 'PactDice', 'Twig', 'Claw', 'Seek', 'Other'];
+    const tokCount = {};
+    for (const [, tok, c] of (meta.redditSerial || [])) tokCount[tok] = (tokCount[tok] || 0) + c;
+    const tokLeaf = (tok) => ({ label: SERIAL_LABEL[tok] || tok, count: tokCount[tok], cat: `WoGtag:${tok}` });
+    const redditChildren = () => {
+      const out = [];
+      for (const u of UNIV_ORDER) {
+        const toks = Object.keys(tokCount).filter((t) => UNIV_OF[t] === u).sort((a, b) => TOK_ORDER.indexOf(a) - TOK_ORDER.indexOf(b));
+        if (!toks.length) continue;
+        const kids = toks.map(tokLeaf);
+        out.push(kids.length > 1 ? { label: u, count: toks.reduce((s, t) => s + tokCount[t], 0), children: kids } : kids[0]);
+      }
+      for (const t of ['Twig', 'Claw', 'Seek', 'Other']) if (tokCount[t]) out.push(tokLeaf(t));
+      return out;
     };
     const wogNode = {
       label: 'Word of God',
@@ -404,7 +414,7 @@
           ? [{
               label: 'Reddit', cat: 'RedditWoG',
               count: (meta.reddit || []).reduce((s, [, c]) => s + c, 0),
-              children: meta.reddit.map(redditChild),
+              children: redditChildren(),
             }]
           : []),
         ...(wt.total

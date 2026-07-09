@@ -249,6 +249,7 @@ async function main() {
   const blogPages = new Map();    // work -> serial-page (FAQ/Cast/About) count
   const redditWoG = new Map();    // subreddit -> served bulk-reddit WoG count
   const redditSerial = new Map(); // "subreddit\tserialToken" -> served count (by primary tag)
+  const servedUntagged = [];      // served reddit ids with no serial tag yet (for a re-attribution pass)
   const threadOrigins = new Map(); // origin -> count, within the WoG thread
   let threadTotal = 0;
   let phoCount = 0;               // PHO Sundays in-universe posts
@@ -290,6 +291,7 @@ async function main() {
       redditWoG.set(rec.subreddit, (redditWoG.get(rec.subreddit) ?? 0) + 1);
       const primary = rec.serialTags?.length ? tokenOf(rec.serialTags[0].serial) : 'Other';
       const k = rec.subreddit + '\t' + primary; redditSerial.set(k, (redditSerial.get(k) ?? 0) + 1);
+      if (!rec.serialTags?.length) servedUntagged.push(rec.id); // served but not yet attributed
     }
     const cats = categoriesOf(rec);
     if (cats.includes('WoGThread')) {
@@ -323,6 +325,7 @@ async function main() {
   };
   await mkdir('site', { recursive: true });
   await writeFile(join('site', 'meta.json'), JSON.stringify(meta));
+  await writeFile('data/wog-served-untagged.json', JSON.stringify(servedUntagged));
 
   console.log(`Wrote ${total} pages to ${BUILD_DIR}/ (skipped ${skipped} short, ${droppedNonCanon} non-canon comments + ${droppedFan} fan-made docs archived).`);
   console.log(`meta.json: ${meta.fiction.length} works, Reference [${meta.reference.map((r) => r.join(':')).join(', ')}], ${meta.wogComment.length} comment-works, reddit [${meta.reddit.map((r) => r.join(':')).join(', ')}], WoG-thread ${threadTotal} (${meta.wogThread.origins.map((o) => o.join(':')).join(', ')}), years ${meta.years[0]}–${meta.years.at(-1)}.`);
