@@ -130,7 +130,7 @@ const VIALS = '1g550q_InlHWmMsyYoATYCtnxkqUDWtn_y4KkVynVsA0';
     const text = lines.join('\n\n');
     if (!text) continue;
     records.push({
-      id: `sheet:vials:${rn}`, work: 'Extras', workSlug: 'extras', type: 'Reference',
+      id: `sheet:vials:${rn}`, work: 'Weaverdice', workSlug: 'weaverdice', type: 'Reference',
       tier: 'canon', docTitle: 'Cauldron Vials',
       title: label ? `${name} — Cauldron vial ${label}` : `${name} — Cauldron vial`,
       heading: name, text, url: rowLink(VIALS, rn), date: '', wordCount: words(text),
@@ -151,8 +151,6 @@ const REF_SHEETS = [
     desc: "Wildbow's Weaverdice detail generator — roll tables for generating a cape's power specifics, quirks, and details by classification." },
   { id: '1gcJoGA4wwkFbL6fpjaeiQTQ-hKrp6BOChOfgxRn14xk', title: 'Weaver Dice: Trigger Doc', tier: 'canon',
     desc: "Wildbow's Weaverdice trigger-event tables — the trigger types and forms used to generate a cape's origin." },
-  { id: '1kWxWhvKzAYl98nuvgCQOchw7mgH7aecyB82hSwMtatQ', title: 'Weaver Dice: Detail Generator (Suggestion Sheet)', tier: 'uncertain',
-    desc: 'Community-suggestion companion to the Weaverdice Detail Generator; owned by Wildbow but fed by reader submissions.' },
 ];
 for (const s of REF_SHEETS) {
   const z = await fetchXlsx(s.id);
