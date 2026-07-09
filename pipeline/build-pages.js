@@ -11,6 +11,16 @@ const CORPUS_DIR = 'data/corpus';
 const BUILD_DIR = 'build';
 const MIN_WORDS = 50; // skip announcement/nav-only posts
 
+// A few serial chapters are really semi-canon side pieces (April Fool's dream
+// chapters, etc.). Reclassify them by canonical URL out of the main serial and
+// into Short Fiction; the overrides below are Object.assign-ed onto the record.
+const RECLASSIFY = {
+  'https://palewebserial.wordpress.com/2021/04/01/far-cry-16-19/': {
+    type: 'Reference', work: 'Short Fiction', workSlug: 'short-fiction', tier: 'dream',
+    title: "Far Cry 14.12 (April Fool's dream)", docTitle: "Far Cry 14.12 (April Fool's dream)",
+  },
+};
+
 const esc = (s) =>
   String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -180,6 +190,8 @@ async function main() {
   try { scores = JSON.parse(await readFile('data/wog-scores.json', 'utf8')); } catch { /* not scored yet */ }
   for (const r of records) if (r.type === 'WoG' && (r.source === 'Comment' || r.source === 'Reddit') && scores[r.id]) r.score = scores[r.id];
 
+  for (const rec of records) { const o = RECLASSIFY[rec.url]; if (o) Object.assign(rec, o); }
+
   let total = 0, skipped = 0, droppedNonCanon = 0, droppedFan = 0;
   const years = new Set();
   const fiction = new Map();      // work -> fiction chapter count
@@ -203,7 +215,7 @@ async function main() {
     // Only Wildbow's own docs are served; community/fan-made reference stays in
     // the archive (corpus file) but isn't indexed. His canon, campaigns, and
     // short-fiction drafts qualify; fan-made / unknown don't.
-    if (isRef && !['canon', 'semicanon', 'draft', 'sample', 'story'].includes(rec.tier)) { droppedFan++; continue; }
+    if (isRef && !['canon', 'semicanon', 'draft', 'sample', 'story', 'dream'].includes(rec.tier)) { droppedFan++; continue; }
     const dir = join(BUILD_DIR, rec.workSlug);
     await mkdir(dir, { recursive: true });
     const slug = rec.id.split(':').slice(1).join(':').replace(/[^a-z0-9-]+/gi, '-');
@@ -226,7 +238,7 @@ async function main() {
   const byWork = (a, b) => ORDER.indexOf(a[0]) - ORDER.indexOf(b[0]);
   const ORIGIN_ORDER = ['CitedComment', 'Reddit', 'SufficientVelocity', 'SpaceBattles', 'Other', 'WoGThreadOnly'];
   const SUB_ORDER = ['Parahumans', 'Weaverdice', 'whowouldwin', 'WormFanfic'];
-  const TIER_ORDER = ['canon', 'semicanon', 'story', 'sample', 'draft', 'fanmade', 'unknown'];
+  const TIER_ORDER = ['canon', 'semicanon', 'dream', 'story', 'sample', 'draft', 'fanmade', 'unknown'];
   const REF_ORDER = ['Weaverdice', 'PactDice', 'PRT Quest', 'Short Fiction', 'Extras'];
   const meta = {
     fiction: [...fiction].sort(byWork),

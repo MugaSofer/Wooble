@@ -355,6 +355,7 @@
         { tier: 'sample', label: 'Samples' },
         { tier: 'draft', label: 'Before Worm' },
         { tier: 'semicanon', label: 'Deleted Chapters' }, // Interlude 19.y — pulled post-publication, still semi-canon
+        { tier: 'dream', label: 'Dream chapters' }, // Pale April Fool's dream chapter
       ] },
     ];
     const sfCount = {};
@@ -416,6 +417,13 @@
     const UNIVERSE_REF = { Parahumans: ['Weaverdice', 'PRT Quest'], Otherverse: ['PactDice'] };
     const UNIVERSE_REDDIT = { Parahumans: (meta.reddit || []).map(([s]) => `Reddit:${s}`) };
     const UNIVERSE_XWORKS = { Parahumans: ['Glow-worm'] }; // comment-works beyond the serials
+    // Universe-specific Short Fiction (each SF tier maps to one universe): Worm
+    // deleted chapter + prequels are Parahumans; the Otherverse shorts + Pale
+    // dream chapter are Otherverse.
+    const UNIVERSE_SF = {
+      Parahumans: ['Ref:Short Fiction:semicanon', 'Ref:Short Fiction:draft'],
+      Otherverse: ['Ref:Short Fiction:canon', 'Ref:Short Fiction:dream'],
+    };
     function headerCats(g) {
       const works = g.children.map((c) => c.label);
       const cats = new Set(g.children.flatMap(leafCats)); // the serials
@@ -425,6 +433,7 @@
         const tiers = refByWork.get(work);
         if (tiers) tiers.length > 1 ? tiers.forEach((t) => cats.add(t.cat)) : cats.add(`Ref:${work}`);
       }
+      for (const c of (UNIVERSE_SF[g.label] || [])) cats.add(c);
       return [...cats];
     }
     // Build the fiction bar: universe groups of work toggles, bookended by
@@ -715,7 +724,7 @@
       const src = m.source || 'Comment';
       const workPill = work ? `<span class="pill ${catColor(work)}">${esc(work)}</span>` : '';
       // Canon is the default (unlabelled); only non-canon tiers wear a badge.
-      const TIER = { semicanon: ['Semi-canon', 'tier-semicanon'], story: ['Story', 'tier-story'], sample: ['Sample', 'tier-sample'], draft: ['Draft', 'tier-draft'], fanmade: ['Fan-made', 'tier-fanmade'], unknown: ['Unknown', 'tier-unknown'] };
+      const TIER = { semicanon: ['Semi-canon', 'tier-semicanon'], dream: ['Semi-canon', 'tier-semicanon'], story: ['Story', 'tier-story'], sample: ['Sample', 'tier-sample'], draft: ['Draft', 'tier-draft'], fanmade: ['Fan-made', 'tier-fanmade'], unknown: ['Unknown', 'tier-unknown'] };
       const tierPill = TIER[m.tier] ? `<span class="pill ${TIER[m.tier][1]}">${TIER[m.tier][0]}</span>` : '';
       const REFCOLOR = { Weaverdice: 'c-wd', PactDice: 'c-red', 'PRT Quest': 'c-yellow', 'Short Fiction': 'c-purple', Extras: 'c-grey' };
       const pills = isRef
