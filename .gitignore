@@ -27,3 +27,5 @@ site/meta.json
 .wrangler/
 *.log
 .DS_Store
+
+data/wog-served-untagged.json
