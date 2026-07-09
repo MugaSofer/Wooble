@@ -42,9 +42,11 @@ for (const [url, date] of posts) {
   const entry = root.querySelector('.entry') || root.querySelector('.entrytext') || root.querySelector('.post');
   const text = entry ? cleanContent(entry.innerHTML) : '';
   const slug = url.match(/\/([a-z0-9-]+)\/?$/i)[1];
+  // "Sample(s): Boil/Face/Peer" are writing samples; "Snippets: Before Worm" is a draft.
+  const tier = /^\s*samples?\b/i.test(title) ? 'sample' : 'draft';
   records.push({
     id: `sf:${slug}`, work: 'Short Fiction', workSlug: 'short-fiction', type: 'Reference',
-    tier: 'draft', docTitle: title, title, text, url, date, wordCount: words(text),
+    tier, docTitle: title, title, text, url, date, wordCount: words(text),
   });
   process.stderr.write(`  ${date}  ${title.slice(0, 34).padEnd(34)} ${words(text)}w\n`);
   await sleep(600);

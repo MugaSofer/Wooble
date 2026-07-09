@@ -66,7 +66,7 @@ for (const [linkId, cs] of byEp) {
   const text = mdText(raw);
   records.push({
     id: `sf:dtwt:${ep}`, work: 'Short Fiction', workSlug: 'short-fiction', type: 'Reference',
-    tier: 'draft', docTitle: title, title,
+    tier: 'story', docTitle: title, title, // finished prompt-stories, not drafts
     text, url: `https://www.reddit.com/r/${SUB}/comments/${ep}/comment/${parts[0].id}/`,
     date: new Date(parts[0].created_utc * 1000).toISOString().slice(0, 10), wordCount: words(text),
   });

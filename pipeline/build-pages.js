@@ -203,7 +203,7 @@ async function main() {
     // Only Wildbow's own docs are served; community/fan-made reference stays in
     // the archive (corpus file) but isn't indexed. His canon, campaigns, and
     // short-fiction drafts qualify; fan-made / unknown don't.
-    if (isRef && !['canon', 'semicanon', 'draft'].includes(rec.tier)) { droppedFan++; continue; }
+    if (isRef && !['canon', 'semicanon', 'draft', 'sample', 'story'].includes(rec.tier)) { droppedFan++; continue; }
     const dir = join(BUILD_DIR, rec.workSlug);
     await mkdir(dir, { recursive: true });
     const slug = rec.id.split(':').slice(1).join(':').replace(/[^a-z0-9-]+/gi, '-');
@@ -226,7 +226,7 @@ async function main() {
   const byWork = (a, b) => ORDER.indexOf(a[0]) - ORDER.indexOf(b[0]);
   const ORIGIN_ORDER = ['CitedComment', 'Reddit', 'SufficientVelocity', 'SpaceBattles', 'Other', 'WoGThreadOnly'];
   const SUB_ORDER = ['Parahumans', 'Weaverdice', 'whowouldwin', 'WormFanfic'];
-  const TIER_ORDER = ['canon', 'semicanon', 'draft', 'fanmade', 'unknown'];
+  const TIER_ORDER = ['canon', 'semicanon', 'story', 'sample', 'draft', 'fanmade', 'unknown'];
   const REF_ORDER = ['Weaverdice', 'PactDice', 'PRT Quest', 'Short Fiction', 'Extras'];
   const meta = {
     fiction: [...fiction].sort(byWork),

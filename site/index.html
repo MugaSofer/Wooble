@@ -134,6 +134,7 @@
        grey, unknown grey w/ dashed outline (reads as "unverified" vs plain fan). */
     .c-wd { --pc: var(--c-wd); }
     .tier-canon { --pc: var(--c-green); } .tier-semicanon { --pc: var(--accent2); }
+    .tier-story { --pc: var(--c-blue); } .tier-sample { --pc: var(--muted); }
     .tier-draft { --pc: var(--muted); } .tier-fanmade { --pc: var(--muted); }
     .tier-unknown { --pc: var(--muted); border: 1px dashed color-mix(in srgb, var(--muted) 60%, transparent); }
     .r-date { color: var(--muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
@@ -324,7 +325,7 @@
     // semi-canon docs are the campaigns he ran (actual-play, canon-compatible).
     // Per-collection tier labels: Weaverdice splits into his rules/reference vs
     // the campaigns he ran; elsewhere the generic tier names apply.
-    const TIER_LABELS = { canon: 'Canon', semicanon: 'Semi-canon', draft: 'Drafts', fanmade: 'Fan-made', unknown: 'Unknown' };
+    const TIER_LABELS = { canon: 'Canon', semicanon: 'Semi-canon', story: 'Stories', sample: 'Samples', draft: 'Drafts', fanmade: 'Fan-made', unknown: 'Unknown' };
     const TIER_LABELS_BY_WORK = { Weaverdice: { canon: 'Rules & reference', semicanon: 'Campaigns (semi-canon)' } };
     const tierLabel = (work, tier) => (TIER_LABELS_BY_WORK[work] || {})[tier] || TIER_LABELS[tier] || tier;
     const refByWork = new Map();
@@ -342,8 +343,22 @@
     const gameChildren = [...refByWork].filter(([w]) => GAME_WORKS.includes(w)).map(mkRefChild);
     const extraChildren = [...refByWork].filter(([w]) => w === 'Extras').map(mkRefChild);
     const gamesNode = gameChildren.length ? { label: 'Games', children: gameChildren } : null;
-    const sfTiers = refByWork.get('Short Fiction');
-    const shortFicNode = sfTiers ? { label: 'Short Fiction', children: sfTiers } : null;
+    // Short Fiction is a small 2-level tree — category › source — over the record
+    // tiers. Stories is a group ready for more sources; Semi-canon (the bonus
+    // interlude) renders as a plain leaf.
+    const SF_TREE = [
+      { group: 'Stories', sources: [{ tier: 'story', label: 'DoTheWriteThing' }] },
+      { group: 'Drafts', sources: [{ tier: 'sample', label: 'Samples' }, { tier: 'draft', label: 'Before Worm' }] },
+      { group: 'Semi-canon', leaf: true, sources: [{ tier: 'semicanon', label: 'Semi-canon' }] },
+    ];
+    const sfCount = {};
+    for (const [work, tier, c] of (meta.reference || [])) if (work === 'Short Fiction') sfCount[tier] = c;
+    const sfChildren = SF_TREE.map(({ group, sources, leaf }) => {
+      const srcs = sources.filter((s) => sfCount[s.tier]).map((s) => ({ label: s.label, count: sfCount[s.tier], cat: `Ref:Short Fiction:${s.tier}` }));
+      if (!srcs.length) return null;
+      return leaf && srcs.length === 1 ? { label: group, count: srcs[0].count, cat: srcs[0].cat } : { label: group, children: srcs };
+    }).filter(Boolean);
+    const shortFicNode = sfChildren.length ? { label: 'Short Fiction', children: sfChildren } : null;
 
     // Word of God tree: blog comments, Reddit, the SB thread, and his misc
     // worldbuilding docs grouped as "Other worldbuilding".
@@ -694,7 +709,7 @@
       const src = m.source || 'Comment';
       const workPill = work ? `<span class="pill ${catColor(work)}">${esc(work)}</span>` : '';
       // Canon is the default (unlabelled); only non-canon tiers wear a badge.
-      const TIER = { semicanon: ['Semi-canon', 'tier-semicanon'], draft: ['Draft', 'tier-draft'], fanmade: ['Fan-made', 'tier-fanmade'], unknown: ['Unknown', 'tier-unknown'] };
+      const TIER = { semicanon: ['Semi-canon', 'tier-semicanon'], story: ['Story', 'tier-story'], sample: ['Sample', 'tier-sample'], draft: ['Draft', 'tier-draft'], fanmade: ['Fan-made', 'tier-fanmade'], unknown: ['Unknown', 'tier-unknown'] };
       const tierPill = TIER[m.tier] ? `<span class="pill ${TIER[m.tier][1]}">${TIER[m.tier][0]}</span>` : '';
       const REFCOLOR = { Weaverdice: 'c-wd', PactDice: 'c-red', 'PRT Quest': 'c-yellow', 'Short Fiction': 'c-purple', Extras: 'c-grey' };
       const pills = isRef
