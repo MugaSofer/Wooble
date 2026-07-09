@@ -45,6 +45,9 @@ function categoriesOf(rec) {
   // Serial pages (FAQ / Cast / About) — his authoritative out-of-story text,
   // grouped by serial. Curated, so served directly (no relevance gate).
   if (rec.source === 'Page') return [`Page:${rec.work}`];
+  // PHO Sundays — his in-universe Parahumans-Online roleplay posts. Own category,
+  // served directly.
+  if (rec.source === 'PHO') return ['PHO'];
   if (rec.source === 'Comment') return rec.cited ? [`Comment:${rec.work}`, 'WoGThread', 'CitedComment'] : [`Comment:${rec.work}`];
   // The bulk Reddit pull is its own WoG source, grouped by subreddit. (Its
   // `cited` flag only exempts it from the canon gate + adds the repository link.)
@@ -213,6 +216,7 @@ async function main() {
   const redditWoG = new Map();    // subreddit -> served bulk-reddit WoG count
   const threadOrigins = new Map(); // origin -> count, within the WoG thread
   let threadTotal = 0;
+  let phoCount = 0;               // PHO Sundays in-universe posts
 
   for (const rec of records) {
     const isWoG = (rec.type || 'Fiction') === 'WoG';
@@ -244,6 +248,7 @@ async function main() {
       continue;
     }
     if (!isWoG) { fiction.set(rec.work, (fiction.get(rec.work) ?? 0) + 1); continue; }
+    if (rec.source === 'PHO') phoCount++;
     if (rec.source === 'Page') blogPages.set(rec.work, (blogPages.get(rec.work) ?? 0) + 1);
     if (rec.source === 'Comment') wogComment.set(rec.work, (wogComment.get(rec.work) ?? 0) + 1);
     if (rec.source === 'Reddit' && String(rec.id).startsWith('wog:reddit:')) redditWoG.set(rec.subreddit, (redditWoG.get(rec.subreddit) ?? 0) + 1);
@@ -270,6 +275,7 @@ async function main() {
     extraSettings: [...extraSettings].sort((a, b) => (EXTRA_SETTING_ORDER.indexOf(a[0]) + 1 || 99) - (EXTRA_SETTING_ORDER.indexOf(b[0]) + 1 || 99)),
     wogComment: [...wogComment].sort(byWork),
     blogPages: [...blogPages].sort(byWork),
+    pho: phoCount,
     reddit: [...redditWoG].sort((a, b) => SUB_ORDER.indexOf(a[0]) - SUB_ORDER.indexOf(b[0])),
     wogThread: { total: threadTotal, origins: [...threadOrigins].sort((a, b) => ORIGIN_ORDER.indexOf(a[0]) - ORIGIN_ORDER.indexOf(b[0])) },
     years: [...years].sort(),

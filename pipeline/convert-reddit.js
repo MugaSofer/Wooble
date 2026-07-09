@@ -4,7 +4,7 @@
 // is replying to) — essential for judging short replies. Output is staged at
 // data/wog-reddit.json (NOT data/corpus) until it's classified and the serving
 // path canon-gates it, so unclassified banter never reaches the index.
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 const ENRICHED = 'data/raw/reddit-wildbow-enriched.json';
@@ -54,9 +54,11 @@ async function main() {
   let scored = {};
   try { scored = JSON.parse(await readFile('data/wog-scores.json', 'utf8')); } catch { /* none */ }
   const todo = records.filter((r) => !scored[r.id]);
-  await rm(BATCH_DIR, { recursive: true, force: true });
   await mkdir(BATCH_DIR, { recursive: true });
   await mkdir(PARTS_DIR, { recursive: true });
+  // Clear only our own comment batches — the submissions pass writes post-*.json
+  // into the same dir and must not be wiped here.
+  for (const f of await readdir(BATCH_DIR)) if (/^batch-\d+\.json$/.test(f)) await rm(join(BATCH_DIR, f));
   let n = 0;
   for (let i = 0; i < todo.length; i += PER_BATCH) {
     const batch = todo.slice(i, i + PER_BATCH).map((r) => ({
