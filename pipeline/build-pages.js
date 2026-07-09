@@ -210,7 +210,9 @@ async function main() {
   for (const rec of records) {
     const isWoG = (rec.type || 'Fiction') === 'WoG';
     const isRef = rec.type === 'Reference';
-    const floor = isWoG ? 1 : isRef ? 20 : MIN_WORDS; // ref sections are shorter than chapters
+    // Ref sections are shorter than chapters; sheet rows (a cape's confirmed
+    // affiliation, a vial's stat line) are terser still and shouldn't be culled.
+    const floor = isWoG ? 1 : isRef ? (String(rec.id).startsWith('sheet:') ? 5 : 20) : MIN_WORDS;
     if (rec.wordCount < floor) { skipped++; continue; }
     // Serve curated WoG in full (fiction, repository quotes, cited entries). The
     // Haiku-classified dumps — blog comments and the bulk Reddit pull — are the
