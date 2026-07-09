@@ -251,7 +251,7 @@ async function main() {
   const ORIGIN_ORDER = ['CitedComment', 'Reddit', 'SufficientVelocity', 'SpaceBattles', 'Other', 'WoGThreadOnly'];
   const SUB_ORDER = ['Parahumans', 'Weaverdice', 'whowouldwin', 'WormFanfic'];
   const TIER_ORDER = ['canon', 'semicanon', 'dream', 'story', 'sample', 'draft', 'uncertain', 'fanmade', 'unknown'];
-  const REF_ORDER = ['Weaverdice', 'PactDice', 'PRT Quest', 'Short Fiction', 'Extras'];
+  const REF_ORDER = ['Weaverdice', 'PactDice', 'PRT Quest', 'Short Fiction', 'Game Concepts', 'Extras'];
   const meta = {
     fiction: [...fiction].sort(byWork),
     reference: [...reference].map(([k, c]) => { const [w, t] = k.split('\t'); return [w, t, c]; })

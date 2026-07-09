@@ -339,7 +339,7 @@
     // Reference collections group into top-level sections: Games (the three
     // tabletop games), Short Fiction (snippets + drafts — its canon/draft tiers
     // shown directly), and Extras (misc worldbuilding, tucked under Word of God).
-    const GAME_WORKS = ['Weaverdice', 'PactDice', 'PRT Quest'];
+    const GAME_WORKS = ['Weaverdice', 'PactDice', 'PRT Quest', 'Game Concepts'];
     const gameChildren = [...refByWork].filter(([w]) => GAME_WORKS.includes(w)).map(mkRefChild);
     const extraChildren = [...refByWork].filter(([w]) => w === 'Extras').map(mkRefChild);
     const gamesNode = gameChildren.length ? { label: 'Games', children: gameChildren } : null;
@@ -420,7 +420,7 @@
     // the matching Reddit WoG + Google Docs. So "Otherverse" grabs Pact/Pale +
     // their comments + PactDice; "Parahumans" grabs Worm/Ward + comments + all the
     // Reddit WoG + Weaverdice + PRT Quest. Individual work buttons stay serial-only.
-    const UNIVERSE_REF = { Parahumans: ['Weaverdice', 'PRT Quest'], Otherverse: ['PactDice'] };
+    const UNIVERSE_REF = { Parahumans: ['Weaverdice', 'PRT Quest', 'Game Concepts'], Otherverse: ['PactDice'] };
     const UNIVERSE_REDDIT = { Parahumans: (meta.reddit || []).map(([s]) => `Reddit:${s}`) };
     const UNIVERSE_XWORKS = { Parahumans: ['Glow-worm'] }; // comment-works beyond the serials
     // Universe-specific Short Fiction (each SF tier maps to one universe): Worm
@@ -732,7 +732,7 @@
       // Canon is the default (unlabelled); only non-canon tiers wear a badge.
       const TIER = { semicanon: ['Semi-canon', 'tier-semicanon'], dream: ['Semi-canon', 'tier-semicanon'], story: ['Story', 'tier-story'], sample: ['Sample', 'tier-sample'], draft: ['Draft', 'tier-draft'], uncertain: ['Uncertain', 'tier-unknown'], fanmade: ['Fan-made', 'tier-fanmade'], unknown: ['Unknown', 'tier-unknown'] };
       const tierPill = TIER[m.tier] ? `<span class="pill ${TIER[m.tier][1]}">${TIER[m.tier][0]}</span>` : '';
-      const REFCOLOR = { Weaverdice: 'c-wd', PactDice: 'c-red', 'PRT Quest': 'c-yellow', 'Short Fiction': 'c-purple', Extras: 'c-grey' };
+      const REFCOLOR = { Weaverdice: 'c-wd', PactDice: 'c-red', 'PRT Quest': 'c-yellow', 'Short Fiction': 'c-purple', 'Game Concepts': 'c-blue', Extras: 'c-grey' };
       const pills = isRef
         ? `<span class="pill ${REFCOLOR[work] || 'c-wd'}">${esc(work || 'Weaverdice')}</span>${tierPill}`
         : !isWoG
