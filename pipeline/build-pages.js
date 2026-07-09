@@ -33,7 +33,12 @@ function categoriesOf(rec) {
   // Reference docs: the collection bucket (Weaverdice / PactDice / PRT Quest /
   // Extras) plus its provenance tier, so the UI can filter a whole collection or
   // by canon / semi-canon / fan-made within it.
-  if (type === 'Reference') return [`Ref:${rec.work}`, `Ref:${rec.work}:${rec.tier}`];
+  if (type === 'Reference') {
+    const cats = [`Ref:${rec.work}`, `Ref:${rec.work}:${rec.tier}`];
+    // Otherverse shorts get a per-doc filter so Poke/Pâté are separate tree leaves.
+    if (rec.work === 'Short Fiction' && rec.tier === 'canon') cats.push(`SFdoc:${rec.docTitle}`);
+    return cats;
+  }
   if (type !== 'WoG') return [rec.work];
   if (rec.source === 'Comment') return rec.cited ? [`Comment:${rec.work}`, 'WoGThread', 'CitedComment'] : [`Comment:${rec.work}`];
   // The bulk Reddit pull is its own WoG source, grouped by subreddit. (Its
@@ -196,6 +201,7 @@ async function main() {
   const years = new Set();
   const fiction = new Map();      // work -> fiction chapter count
   const reference = new Map();    // "collection\ttier" -> reference-section count
+  const otherverseShorts = new Map(); // Short-Fiction canon docTitle -> record count
   const wogComment = new Map();   // work -> blog-comment WoG count
   const redditWoG = new Map();    // subreddit -> served bulk-reddit WoG count
   const threadOrigins = new Map(); // origin -> count, within the WoG thread
@@ -222,7 +228,11 @@ async function main() {
     await writeFile(join(dir, `${slug}.html`), pageHtml(rec));
     total++;
     if (rec.date) years.add(rec.date.slice(0, 4));
-    if (isRef) { const k = rec.work + '\t' + rec.tier; reference.set(k, (reference.get(k) ?? 0) + 1); continue; }
+    if (isRef) {
+      const k = rec.work + '\t' + rec.tier; reference.set(k, (reference.get(k) ?? 0) + 1);
+      if (rec.work === 'Short Fiction' && rec.tier === 'canon') otherverseShorts.set(rec.docTitle, (otherverseShorts.get(rec.docTitle) ?? 0) + 1);
+      continue;
+    }
     if (!isWoG) { fiction.set(rec.work, (fiction.get(rec.work) ?? 0) + 1); continue; }
     if (rec.source === 'Comment') wogComment.set(rec.work, (wogComment.get(rec.work) ?? 0) + 1);
     if (rec.source === 'Reddit' && String(rec.id).startsWith('wog:reddit:')) redditWoG.set(rec.subreddit, (redditWoG.get(rec.subreddit) ?? 0) + 1);
@@ -244,6 +254,7 @@ async function main() {
     fiction: [...fiction].sort(byWork),
     reference: [...reference].map(([k, c]) => { const [w, t] = k.split('\t'); return [w, t, c]; })
       .sort((a, b) => (REF_ORDER.indexOf(a[0]) - REF_ORDER.indexOf(b[0])) || (TIER_ORDER.indexOf(a[1]) - TIER_ORDER.indexOf(b[1]))),
+    otherverseShorts: [...otherverseShorts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])),
     wogComment: [...wogComment].sort(byWork),
     reddit: [...redditWoG].sort((a, b) => SUB_ORDER.indexOf(a[0]) - SUB_ORDER.indexOf(b[0])),
     wogThread: { total: threadTotal, origins: [...threadOrigins].sort((a, b) => ORIGIN_ORDER.indexOf(a[0]) - ORIGIN_ORDER.indexOf(b[0])) },

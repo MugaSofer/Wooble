@@ -348,7 +348,7 @@
     // interlude) renders as a plain leaf.
     const SF_TREE = [
       { group: 'Stories', sources: [
-        { tier: 'canon', label: 'Otherverse shorts' }, // Poke, Pâté — canon Otherverse shorts
+        { docs: true, label: 'Otherverse shorts' }, // expands into per-doc leaves (Poke, Pâté)
         { tier: 'story', label: 'DoTheWriteThing' },
       ] },
       { group: 'Drafts', sources: [
@@ -360,10 +360,16 @@
     ];
     const sfCount = {};
     for (const [work, tier, c] of (meta.reference || [])) if (work === 'Short Fiction') sfCount[tier] = c;
-    const sfChildren = SF_TREE.map(({ group, sources, leaf }) => {
-      const srcs = sources.filter((s) => sfCount[s.tier]).map((s) => ({ label: s.label, count: sfCount[s.tier], cat: `Ref:Short Fiction:${s.tier}` }));
-      if (!srcs.length) return null;
-      return leaf && srcs.length === 1 ? { label: group, count: srcs[0].count, cat: srcs[0].cat } : { label: group, children: srcs };
+    const sfSource = (s) => {
+      if (s.docs) { // Otherverse shorts → a subgroup of per-doc leaves (Poke, Pâté)
+        const kids = (meta.otherverseShorts || []).map(([title, count]) => ({ label: title, count, cat: `SFdoc:${title}` }));
+        return kids.length ? { label: s.label, children: kids } : null;
+      }
+      return sfCount[s.tier] ? { label: s.label, count: sfCount[s.tier], cat: `Ref:Short Fiction:${s.tier}` } : null;
+    };
+    const sfChildren = SF_TREE.map(({ group, sources }) => {
+      const srcs = sources.map(sfSource).filter(Boolean);
+      return srcs.length ? { label: group, children: srcs } : null;
     }).filter(Boolean);
     const shortFicNode = sfChildren.length ? { label: 'Short Fiction', children: sfChildren } : null;
 

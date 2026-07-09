@@ -49,7 +49,7 @@ async function fetchDoc(id) {
 // Split a doc body into { anchor, heading, text } sections at h1–h3 boundaries.
 // Leaf text comes from p/li elements (tables in gdocs are td>p, so their prose
 // is captured as paragraphs — no double counting from selecting the table too).
-function sections(html, docTitle) {
+function sections(html, docTitle, { anchoredP = false } = {}) {
   // Drop inline base64 image/font data — it's the bulk of a big export's bytes
   // (the PactDice doc is 77MB of it) and carries no searchable text.
   html = html.replace(/ (?:src|href)="data:[^"]*"/g, '');
@@ -71,8 +71,11 @@ function sections(html, docTitle) {
     const sfx = id.match(/^(.*)-\d+$/);
     const degenerate = sfx && emptyId.has(sfx[1]);
     // A genuine heading is short (a paragraph styled as a heading is over-long)
-    // and not a degenerate clustered anchor. Fold anything else into the body.
-    const isHeading = /^h[1-3]$/i.test(el.tagName) && t && t.length <= 100 && !degenerate;
+    // and not a degenerate clustered anchor. For prose docs with no real headings,
+    // a short paragraph carrying a heading anchor (h.xxx) is a chapter marker
+    // (e.g. Poke's "(First)"/"(Second)"), so split on those too when anchoredP.
+    const isHeading = t && t.length <= 100 && !degenerate &&
+      (/^h[1-3]$/i.test(el.tagName) || (anchoredP && /^p$/i.test(el.tagName) && /^h\./.test(id)));
     if (isHeading) {
       if (cur.parts.length) out.push(cur);
       cur = { anchor: id, heading: t, parts: [] };
@@ -105,13 +108,13 @@ async function main() {
     const html = await fetchDoc(doc.id);
     if (!html) { missed++; process.stderr.write(`  MISS ${doc.title}\n`); continue; }
     if (!existsSync(join(RAW_DIR, doc.id + '.html'))) fetched++;
-    const secs = sections(html, doc.title);
+    // Short-fiction prose has no headings; split it at chapter-marker paragraphs
+    // (anchored short <p>, e.g. Poke's "(First)"/"(Second)") so multi-chapter
+    // stories deep-link per chapter. Single-story docs just come out whole.
+    const secs = sections(html, doc.title, { anchoredP: doc.work === 'Short Fiction' });
     const kept = secs.filter((s) => words(s.text) >= MIN_SECTION_WORDS);
-    // Short-fiction prose is kept as ONE whole-doc record (don't fragment a story
-    // into per-heading results, the way rules docs are split). Same single-record
-    // shape is the fallback for any doc with no substantial sections.
     const whole = () => (secs.length ? [{ anchor: '', heading: doc.title, text: secs.map((s) => s.text).join('\n\n') }] : []);
-    const use = doc.work === 'Short Fiction' ? whole() : (kept.length ? kept : whole());
+    const use = kept.length ? kept : whole();
     if (!use.length) { missed++; continue; }
     docsUsed++;
     const work = doc.work || 'Weaverdice';
