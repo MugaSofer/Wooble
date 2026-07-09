@@ -114,6 +114,8 @@
     .wog-section.dim { opacity: .38; }
     .dd-item.dim { opacity: .38; }
     #status { color: var(--muted); font-size: .85rem; margin: 1rem .2rem .4rem; min-height: 1.2em; }
+    .search-hint { color: var(--muted); font-size: .78rem; margin: .4rem .3rem 0; opacity: .85; }
+    .search-hint code { font-size: .95em; background: color-mix(in srgb, var(--muted) 16%, transparent); padding: .05rem .32rem; border-radius: 4px; }
     #results { list-style: none; margin: 0; padding: 0; }
     .result { padding: 1rem 0; border-top: 1px solid var(--line); }
     .r-head { display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap; }
@@ -167,6 +169,7 @@
   <main>
     <input id="q" type="search" autocomplete="off" autofocus
            placeholder="Search Worm, Pact, Twig, Ward, Pale, Claw, Seek…">
+    <div class="search-hint"><code>"exact phrase"</code> and <code>-exclude</code> also work</div>
     <div class="controls">
       <label>Sources
         <span class="dropdown">
@@ -563,9 +566,24 @@
     moreBtn.addEventListener('click', renderMore);
     matchesEl.addEventListener('change', () => { if (pending) { resultsEl.innerHTML = ''; shown = 0; renderMore(); } });
 
+    // Terms to highlight / build "Matches" snippets around. Pagefind itself does
+    // the real matching (we pass the raw query straight through), so this only has
+    // to mirror it for display: treat a "quoted phrase" as one term, and drop
+    // -excluded terms so we don't highlight a word the user searched to remove.
+    function parseTerms(query) {
+      const terms = [];
+      const re = /"([^"]*)"|(\S+)/g;
+      let m;
+      while ((m = re.exec(query || ''))) {
+        if (m[1] != null) { const p = m[1].trim(); if (p) terms.push(p); }
+        else if (!m[2].startsWith('-') && m[2].length > 1) terms.push(m[2]);
+      }
+      return terms;
+    }
+
     async function run() {
       const query = qEl.value.trim();
-      queryTerms = query ? query.split(/\s+/).filter((t) => t.length > 1) : [];
+      queryTerms = parseTerms(query);
       const { opts, refined } = buildOptions();
       const browsing = !query && refined;
 
