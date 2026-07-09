@@ -277,7 +277,7 @@
       const f = await (await pagefindPromise).filters();
       meta = {
         fiction: Object.entries(f.category || {}).filter(([k]) => /^(Worm|Pact|Twig|Ward|Pale|Claw|Seek)$/.test(k)),
-        wogComment: [], wogThread: { total: 0, origins: [] }, years: Object.keys(f.year || {}).sort(),
+        wogComment: [], blogPages: [], wogThread: { total: 0, origins: [] }, years: Object.keys(f.year || {}).sort(),
       };
     }
 
@@ -383,6 +383,9 @@
         ...((meta.wogComment || []).length
           ? [{ label: 'Blog comments', children: meta.wogComment.map(([w, c]) => ({ label: w, count: c, cat: `Comment:${w}` })) }]
           : []),
+        ...((meta.blogPages || []).length
+          ? [{ label: 'FAQ, cast & about', children: meta.blogPages.map(([w, c]) => ({ label: w, count: c, cat: `Page:${w}` })) }]
+          : []),
         ...((meta.reddit || []).length
           ? [{
               label: 'Reddit', cat: 'RedditWoG',
@@ -441,6 +444,7 @@
       const works = g.children.map((c) => c.label);
       const cats = new Set(g.children.flatMap(leafCats)); // the serials
       for (const [w] of (meta.wogComment || [])) if (works.includes(w) || (UNIVERSE_XWORKS[g.label] || []).includes(w)) cats.add(`Comment:${w}`);
+      for (const [w] of (meta.blogPages || [])) if (works.includes(w) || (UNIVERSE_XWORKS[g.label] || []).includes(w)) cats.add(`Page:${w}`);
       for (const r of (UNIVERSE_REDDIT[g.label] || [])) cats.add(r);
       for (const work of (UNIVERSE_REF[g.label] || [])) {
         const tiers = refByWork.get(work);

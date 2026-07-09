@@ -42,6 +42,9 @@ function categoriesOf(rec) {
     return cats;
   }
   if (type !== 'WoG') return [rec.work];
+  // Serial pages (FAQ / Cast / About) — his authoritative out-of-story text,
+  // grouped by serial. Curated, so served directly (no relevance gate).
+  if (rec.source === 'Page') return [`Page:${rec.work}`];
   if (rec.source === 'Comment') return rec.cited ? [`Comment:${rec.work}`, 'WoGThread', 'CitedComment'] : [`Comment:${rec.work}`];
   // The bulk Reddit pull is its own WoG source, grouped by subreddit. (Its
   // `cited` flag only exempts it from the canon gate + adds the repository link.)
@@ -206,6 +209,7 @@ async function main() {
   const otherverseShorts = new Map(); // Short-Fiction canon docTitle -> record count
   const extraSettings = new Map();    // Extras setting (serial) -> record count
   const wogComment = new Map();   // work -> blog-comment WoG count
+  const blogPages = new Map();    // work -> serial-page (FAQ/Cast/About) count
   const redditWoG = new Map();    // subreddit -> served bulk-reddit WoG count
   const threadOrigins = new Map(); // origin -> count, within the WoG thread
   let threadTotal = 0;
@@ -240,6 +244,7 @@ async function main() {
       continue;
     }
     if (!isWoG) { fiction.set(rec.work, (fiction.get(rec.work) ?? 0) + 1); continue; }
+    if (rec.source === 'Page') blogPages.set(rec.work, (blogPages.get(rec.work) ?? 0) + 1);
     if (rec.source === 'Comment') wogComment.set(rec.work, (wogComment.get(rec.work) ?? 0) + 1);
     if (rec.source === 'Reddit' && String(rec.id).startsWith('wog:reddit:')) redditWoG.set(rec.subreddit, (redditWoG.get(rec.subreddit) ?? 0) + 1);
     const cats = categoriesOf(rec);
@@ -264,6 +269,7 @@ async function main() {
     otherverseShorts: [...otherverseShorts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])),
     extraSettings: [...extraSettings].sort((a, b) => (EXTRA_SETTING_ORDER.indexOf(a[0]) + 1 || 99) - (EXTRA_SETTING_ORDER.indexOf(b[0]) + 1 || 99)),
     wogComment: [...wogComment].sort(byWork),
+    blogPages: [...blogPages].sort(byWork),
     reddit: [...redditWoG].sort((a, b) => SUB_ORDER.indexOf(a[0]) - SUB_ORDER.indexOf(b[0])),
     wogThread: { total: threadTotal, origins: [...threadOrigins].sort((a, b) => ORIGIN_ORDER.indexOf(a[0]) - ORIGIN_ORDER.indexOf(b[0])) },
     years: [...years].sort(),
