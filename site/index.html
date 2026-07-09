@@ -348,8 +348,11 @@
     // interlude) renders as a plain leaf.
     const SF_TREE = [
       { group: 'Stories', sources: [{ tier: 'story', label: 'DoTheWriteThing' }] },
-      { group: 'Drafts', sources: [{ tier: 'sample', label: 'Samples' }, { tier: 'draft', label: 'Before Worm' }] },
-      { group: 'Semi-canon', leaf: true, sources: [{ tier: 'semicanon', label: 'Semi-canon' }] },
+      { group: 'Drafts', sources: [
+        { tier: 'sample', label: 'Samples' },
+        { tier: 'draft', label: 'Before Worm' },
+        { tier: 'semicanon', label: 'Deleted Chapters' }, // Interlude 19.y — pulled post-publication, still semi-canon
+      ] },
     ];
     const sfCount = {};
     for (const [work, tier, c] of (meta.reference || [])) if (work === 'Short Fiction') sfCount[tier] = c;
