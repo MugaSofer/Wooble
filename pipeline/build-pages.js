@@ -165,6 +165,11 @@ async function main() {
       if (m) commentById.set(m[1], r);
       const n = norm(r.text);
       if (n.length >= 50) commentTexts.push({ n, rec: r });
+    } else if (typeof r.id === 'string' && r.id.startsWith('wog:reddit:')) {
+      // Index the bulk reddit pull by text too, so a thread citation of a reddit
+      // comment whose URL didn't match still merges (was a 393-record dup source).
+      const n = norm(r.text);
+      if (n.length >= 50) commentTexts.push({ n, rec: r });
     }
   }
   // A thread quote matches a scraped comment that contains its first 200
@@ -192,7 +197,7 @@ async function main() {
     const fromThread = typeof r.id === 'string' && r.id.startsWith('wog:sb:');
     if (fromThread && r.source === 'Blog') {
       const m = String(r.url || '').match(/#comment-(\d+)/);
-      const hit = m && commentById.get(m[1]);
+      const hit = (m && commentById.get(m[1])) || matchComment(r.text); // id, then text fallback
       if (hit) { hit.cited = true; hit.wogUrl = r.wogUrl; continue; } // merge & drop the dup
       r.source = 'Comment'; r.cited = true; // unmatched citation → a cited Worm comment
     } else if (fromThread && r.source === 'WoG Thread') {
@@ -202,7 +207,7 @@ async function main() {
     } else if (fromThread && r.source === 'Reddit') {
       // Same reddit comment already in the bulk pull → merge into it (no dup).
       const cid = String(r.url || '').split(/[/?#]/).find((s) => bulkReddit.has(s));
-      const hit = cid && bulkReddit.get(cid);
+      const hit = (cid && bulkReddit.get(cid)) || matchComment(r.text); // id, then text fallback
       if (hit) { hit.cited = true; hit.wogUrl = r.wogUrl || r.url; redditMerged++; continue; }
       r.cited = true;
     } else if (fromThread) {
@@ -224,6 +229,13 @@ async function main() {
   // Attach even an empty [] (Haiku found no serial signal) so those attributed
   // records land in an "Other" bucket, distinct from un-attributed subreddits.
   for (const r of records) if (String(r.id).startsWith('wog:reddit:') && serialTags[r.id]) r.serialTags = serialTags[r.id];
+  // Sanity filter: a tag for a serial that hadn't been published when the comment
+  // was posted is impossible — drop it. Release dates = each serial's earliest
+  // chapter date in the corpus (only the 7 serials have one; universe/game tags
+  // are left alone).
+  const RELEASE = {};
+  for (const r of all) if ((r.type || 'Fiction') === 'Fiction' && r.work && r.date && (!RELEASE[r.work] || r.date < RELEASE[r.work])) RELEASE[r.work] = r.date;
+  for (const r of records) if (r.serialTags?.length) r.serialTags = r.serialTags.filter((t) => !RELEASE[t.serial] || !r.date || r.date >= RELEASE[t.serial]);
 
   for (const rec of records) { const o = RECLASSIFY[rec.url]; if (o) Object.assign(rec, o); }
 
