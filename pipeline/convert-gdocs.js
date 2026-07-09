@@ -107,8 +107,11 @@ async function main() {
     if (!existsSync(join(RAW_DIR, doc.id + '.html'))) fetched++;
     const secs = sections(html, doc.title);
     const kept = secs.filter((s) => words(s.text) >= MIN_SECTION_WORDS);
-    // A doc with no substantial split (short doc, no headings) → one whole-doc record.
-    const use = kept.length ? kept : (secs.length ? [{ anchor: '', heading: doc.title, text: secs.map((s) => s.text).join('\n\n') }] : []);
+    // Short-fiction prose is kept as ONE whole-doc record (don't fragment a story
+    // into per-heading results, the way rules docs are split). Same single-record
+    // shape is the fallback for any doc with no substantial sections.
+    const whole = () => (secs.length ? [{ anchor: '', heading: doc.title, text: secs.map((s) => s.text).join('\n\n') }] : []);
+    const use = doc.work === 'Short Fiction' ? whole() : (kept.length ? kept : whole());
     if (!use.length) { missed++; continue; }
     docsUsed++;
     const work = doc.work || 'Weaverdice';

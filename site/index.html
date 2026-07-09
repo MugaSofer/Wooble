@@ -347,7 +347,10 @@
     // tiers. Stories is a group ready for more sources; Semi-canon (the bonus
     // interlude) renders as a plain leaf.
     const SF_TREE = [
-      { group: 'Stories', sources: [{ tier: 'story', label: 'DoTheWriteThing' }] },
+      { group: 'Stories', sources: [
+        { tier: 'canon', label: 'Otherverse shorts' }, // Poke, Pâté — canon Otherverse shorts
+        { tier: 'story', label: 'DoTheWriteThing' },
+      ] },
       { group: 'Drafts', sources: [
         { tier: 'sample', label: 'Samples' },
         { tier: 'draft', label: 'Before Worm' },
