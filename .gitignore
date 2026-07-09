@@ -11,6 +11,8 @@ data/raw/*
 data/corpus/
 data/wog-batches/
 data/wog-scores-parts/
+data/attr-batches/
+data/wog-serial-tags-parts/
 # wog-scores.json (the Haiku classifications) IS committed: it's id -> scores with
 # no story text, and re-running the ~$3 / ~50-min classification would be wasteful.
 # Sonnet thread-attribution pass: keep the verified patch (wog-thread-fixes.json),

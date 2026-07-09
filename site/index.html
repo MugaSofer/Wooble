@@ -133,6 +133,7 @@
     /* Weaverdice + provenance-tier badges: canon green, semi-canon amber, fan-made
        grey, unknown grey w/ dashed outline (reads as "unverified" vs plain fan). */
     .c-wd { --pc: var(--c-wd); }
+    .serial-pill { --pc: var(--muted); font-style: italic; }
     .tier-canon { --pc: var(--c-green); } .tier-semicanon { --pc: var(--accent2); }
     .tier-story { --pc: var(--c-blue); } .tier-sample { --pc: var(--muted); }
     .tier-draft { --pc: var(--muted); } .tier-fanmade { --pc: var(--muted); }
@@ -377,6 +378,18 @@
 
     // Word of God tree: blog comments, Reddit, the SB thread, and his misc
     // worldbuilding docs grouped as "Other worldbuilding".
+    // Reddit WoG: r/Parahumans & r/Weaverdice are mixed, so each shows Haiku-
+    // attributed serial children (the parent checkbox still selects the whole sub;
+    // children narrow to a serial via its WoGtag). Single-serial subs stay leaves.
+    const SERIAL_LABEL = { Worm: 'Worm', Ward: 'Ward', Pact: 'Pact', Twig: 'Twig', Pale: 'Pale', Claw: 'Claw', Seek: 'Seek', Weaverdice: 'Weaverdice', PactDice: 'PactDice', Parahumans: 'Parahumans (general)', Otherverse: 'Otherverse (general)', Other: 'Other / unclear' };
+    const SERIAL_ORDER = ['Worm', 'Ward', 'Pact', 'Pale', 'Twig', 'Claw', 'Seek', 'Weaverdice', 'PactDice', 'Parahumans', 'Otherverse', 'Other'];
+    const redditSerialBySub = {};
+    for (const [sub, tok, c] of (meta.redditSerial || [])) (redditSerialBySub[sub] = redditSerialBySub[sub] || []).push([tok, c]);
+    const redditChild = ([sub, c]) => {
+      const ser = (redditSerialBySub[sub] || []).slice().sort((a, b) => (SERIAL_ORDER.indexOf(a[0]) + 1 || 99) - (SERIAL_ORDER.indexOf(b[0]) + 1 || 99));
+      if (ser.length > 1) return { label: 'r/' + sub, cat: `Reddit:${sub}`, count: c, children: ser.map(([tok, n]) => ({ label: SERIAL_LABEL[tok] || tok, count: n, cat: `WoGtag:${tok}` })) };
+      return { label: 'r/' + sub, count: c, cat: `Reddit:${sub}` };
+    };
     const wogNode = {
       label: 'Word of God',
       children: [
@@ -391,7 +404,7 @@
           ? [{
               label: 'Reddit', cat: 'RedditWoG',
               count: (meta.reddit || []).reduce((s, [, c]) => s + c, 0),
-              children: meta.reddit.map(([sub, c]) => ({ label: 'r/' + sub, count: c, cat: `Reddit:${sub}` })),
+              children: meta.reddit.map(redditChild),
             }]
           : []),
         ...(wt.total
@@ -427,7 +440,12 @@
     // their comments + PactDice; "Parahumans" grabs Worm/Ward + comments + all the
     // Reddit WoG + Weaverdice + PRT Quest. Individual work buttons stay serial-only.
     const UNIVERSE_REF = { Parahumans: ['Weaverdice', 'PRT Quest', 'Game Concepts'], Otherverse: ['PactDice'] };
-    const UNIVERSE_REDDIT = { Parahumans: (meta.reddit || []).map(([s]) => `Reddit:${s}`) };
+    // Route reddit WoG to a universe by its ATTRIBUTED serial, not its subreddit —
+    // so Pact/Pale WoG posted in r/Parahumans lands in Otherverse, not Parahumans.
+    const UNIVERSE_REDDIT = {
+      Parahumans: ['WoGtag:Worm', 'WoGtag:Ward', 'WoGtag:Parahumans', 'WoGtag:Weaverdice', 'Reddit:whowouldwin', 'Reddit:WormFanfic'],
+      Otherverse: ['WoGtag:Pact', 'WoGtag:Pale', 'WoGtag:Otherverse', 'WoGtag:PactDice'],
+    };
     const UNIVERSE_XWORKS = { Parahumans: ['Glow-worm'] }; // comment-works beyond the serials
     // Universe-specific Short Fiction (each SF tier maps to one universe): Worm
     // deleted chapter + prequels are Parahumans; the Otherverse shorts + Pale
@@ -743,6 +761,11 @@
       // Weaverdice reference shows a "Weaverdice" pill + its provenance tier badge.
       const isReddit = isWoG && m.source === 'Reddit' && m.subreddit;
       const src = m.source || 'Comment';
+      // Attributed serial(s) for mixed-sub reddit WoG — a soft "probably X · N%" pill.
+      const stags = m.serial_tags ? (() => { try { return JSON.parse(m.serial_tags); } catch { return null; } })() : null;
+      const serialPill = stags && stags.length
+        ? `<span class="pill serial-pill">${stags[0].pct >= 80 && stags.length === 1 ? '' : 'probably '}${stags.slice(0, 2).map((t) => esc(String(t.serial).replace('-universe', ' (general)')) + ' ' + t.pct + '%').join(' · ')}</span>`
+        : '';
       const workPill = work ? `<span class="pill ${catColor(work)}">${esc(work)}</span>` : '';
       // Canon is the default (unlabelled); only non-canon tiers wear a badge.
       const TIER = { semicanon: ['Semi-canon', 'tier-semicanon'], dream: ['Semi-canon', 'tier-semicanon'], story: ['Story', 'tier-story'], sample: ['Sample', 'tier-sample'], draft: ['Draft', 'tier-draft'], uncertain: ['Uncertain', 'tier-unknown'], fanmade: ['Fan-made', 'tier-fanmade'], unknown: ['Unknown', 'tier-unknown'] };
@@ -753,7 +776,7 @@
         : !isWoG
         ? workPill
         : isReddit
-          ? `<span class="pill sub-pill ${catColor('Reddit')}">/r/${esc(m.subreddit)}</span>`
+          ? `<span class="pill sub-pill ${catColor('Reddit')}">/r/${esc(m.subreddit)}</span>${serialPill}`
           : src === 'Comment'
             ? `${workPill}<span class="pill ${catColor(src)}">${esc(src)}</span>`
             : `<span class="pill ${catColor(src)}">${esc(src)}</span>`;

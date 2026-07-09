@@ -24,6 +24,13 @@ const RECLASSIFY = {
 const esc = (s) =>
   String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+// Haiku attributes the mixed subreddits' WoG (r/Parahumans = any serial;
+// r/Weaverdice = Weaverdice or PactDice) to a serial with a confidence pct. The
+// two universe pseudo-labels collapse to a universe token for filtering.
+const TAG_TOKEN = { 'Parahumans-universe': 'Parahumans', 'Otherverse-universe': 'Otherverse' };
+const tokenOf = (s) => TAG_TOKEN[s] || s;
+const TAG_MIN = 40; // pct threshold for a tag to confer filter membership
+
 // One or more filter `category` values per record. Fiction = its work. WoG = its
 // source (blog comments kept per-work). Anything cited in the SpaceBattles WoG
 // thread ALSO carries the cross-cutting "WoGThread" value, so a cited blog
@@ -53,6 +60,13 @@ function categoriesOf(rec) {
   // `cited` flag only exempts it from the canon gate + adds the repository link.)
   if (rec.source === 'Reddit' && String(rec.id).startsWith('wog:reddit:')) {
     const base = ['RedditWoG', `Reddit:${rec.subreddit}`];
+    // Attributed serial(s) → filter membership (crossover posts join every serial
+    // they're >=TAG_MIN% about; universe-general → a universe token; no signal → Other).
+    if (rec.serialTags) {
+      let any = false;
+      for (const t of rec.serialTags) if (t.pct >= TAG_MIN) { base.push(`WoGtag:${tokenOf(t.serial)}`); any = true; }
+      if (!any) base.push('WoGtag:Other');
+    }
     return rec.cited ? [...base, 'WoGThread', 'Reddit'] : base; // cited = also quoted in the WoG thread
   }
   // Known origins keep their own bucket; a cited link to some other external
@@ -88,6 +102,7 @@ function pageHtml(rec) {
       `    <span data-pagefind-meta="chapter">${esc(rec.chapterTitle ?? '')}</span>\n` +
       `    <span data-pagefind-meta="asked_by">${esc(rec.parentAuthor ?? '')}</span>\n` +
       (rec.subreddit ? `    <span data-pagefind-meta="subreddit">${esc(rec.subreddit)}</span>\n` : '') +
+      (rec.serialTags ? `    <span data-pagefind-meta="serial_tags">${esc(JSON.stringify(rec.serialTags.slice(0, 3)))}</span>\n` : '') +
       (rec.wogUrl ? `    <a data-pagefind-meta="wog_url[href]" href="${esc(rec.wogUrl)}">wog</a>\n` : '') +
       (rec.question ? `    <span data-pagefind-meta="question">${esc(rec.question)}</span>\n` : '') +
       `    <span data-pagefind-meta="answer">${esc(rec.text)}</span>\n`;
@@ -203,6 +218,13 @@ async function main() {
   try { scores = JSON.parse(await readFile('data/wog-scores.json', 'utf8')); } catch { /* not scored yet */ }
   for (const r of records) if (r.type === 'WoG' && (r.source === 'Comment' || r.source === 'Reddit') && scores[r.id]) r.score = scores[r.id];
 
+  // Serial attribution for the mixed-subreddit Reddit WoG (Haiku-tagged).
+  let serialTags = {};
+  try { serialTags = JSON.parse(await readFile('data/wog-serial-tags.json', 'utf8')); } catch { /* not attributed yet */ }
+  // Attach even an empty [] (Haiku found no serial signal) so those attributed
+  // records land in an "Other" bucket, distinct from un-attributed subreddits.
+  for (const r of records) if (String(r.id).startsWith('wog:reddit:') && serialTags[r.id]) r.serialTags = serialTags[r.id];
+
   for (const rec of records) { const o = RECLASSIFY[rec.url]; if (o) Object.assign(rec, o); }
 
   let total = 0, skipped = 0, droppedNonCanon = 0, droppedFan = 0;
@@ -214,6 +236,7 @@ async function main() {
   const wogComment = new Map();   // work -> blog-comment WoG count
   const blogPages = new Map();    // work -> serial-page (FAQ/Cast/About) count
   const redditWoG = new Map();    // subreddit -> served bulk-reddit WoG count
+  const redditSerial = new Map(); // "subreddit\tserialToken" -> served count (by primary tag)
   const threadOrigins = new Map(); // origin -> count, within the WoG thread
   let threadTotal = 0;
   let phoCount = 0;               // PHO Sundays in-universe posts
@@ -251,7 +274,11 @@ async function main() {
     if (rec.source === 'PHO') phoCount++;
     if (rec.source === 'Page') blogPages.set(rec.work, (blogPages.get(rec.work) ?? 0) + 1);
     if (rec.source === 'Comment') wogComment.set(rec.work, (wogComment.get(rec.work) ?? 0) + 1);
-    if (rec.source === 'Reddit' && String(rec.id).startsWith('wog:reddit:')) redditWoG.set(rec.subreddit, (redditWoG.get(rec.subreddit) ?? 0) + 1);
+    if (rec.source === 'Reddit' && String(rec.id).startsWith('wog:reddit:')) {
+      redditWoG.set(rec.subreddit, (redditWoG.get(rec.subreddit) ?? 0) + 1);
+      const primary = rec.serialTags?.length ? tokenOf(rec.serialTags[0].serial) : 'Other';
+      const k = rec.subreddit + '\t' + primary; redditSerial.set(k, (redditSerial.get(k) ?? 0) + 1);
+    }
     const cats = categoriesOf(rec);
     if (cats.includes('WoGThread')) {
       threadTotal++;
@@ -277,6 +304,7 @@ async function main() {
     blogPages: [...blogPages].sort(byWork),
     pho: phoCount,
     reddit: [...redditWoG].sort((a, b) => SUB_ORDER.indexOf(a[0]) - SUB_ORDER.indexOf(b[0])),
+    redditSerial: [...redditSerial].map(([k, c]) => { const [s, t] = k.split('\t'); return [s, t, c]; }).sort((a, b) => b[2] - a[2]),
     wogThread: { total: threadTotal, origins: [...threadOrigins].sort((a, b) => ORIGIN_ORDER.indexOf(a[0]) - ORIGIN_ORDER.indexOf(b[0])) },
     years: [...years].sort(),
     items: total,
