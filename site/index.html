@@ -169,7 +169,7 @@
   <main>
     <input id="q" type="search" autocomplete="off" autofocus
            placeholder="Search Worm, Pact, Twig, Ward, Pale, Claw, Seek…">
-    <div class="search-hint"><code>"exact phrase"</code> and <code>-exclude</code> also work</div>
+    <div class="search-hint"><code>"exact phrase"</code> · <code>-exclude</code> · <code>a OR b</code></div>
     <div class="controls">
       <label>Sources
         <span class="dropdown">
@@ -566,19 +566,57 @@
     moreBtn.addEventListener('click', renderMore);
     matchesEl.addEventListener('change', () => { if (pending) { resultsEl.innerHTML = ''; shown = 0; renderMore(); } });
 
-    // Terms to highlight / build "Matches" snippets around. Pagefind itself does
-    // the real matching (we pass the raw query straight through), so this only has
-    // to mirror it for display: treat a "quoted phrase" as one term, and drop
-    // -excluded terms so we don't highlight a word the user searched to remove.
+    // Terms to highlight / build "Matches" snippets around: treat a "quoted
+    // phrase" as one term, and drop -excluded terms and the OR keyword so we don't
+    // highlight a word the user searched to remove (or the operator itself).
     function parseTerms(query) {
       const terms = [];
       const re = /"([^"]*)"|(\S+)/g;
       let m;
       while ((m = re.exec(query || ''))) {
         if (m[1] != null) { const p = m[1].trim(); if (p) terms.push(p); }
-        else if (!m[2].startsWith('-') && m[2].length > 1) terms.push(m[2]);
+        else if (m[2] !== 'OR' && !m[2].startsWith('-') && m[2].length > 1) terms.push(m[2]);
       }
       return terms;
+    }
+
+    // Pagefind natively handles AND + "phrases" but NOT exclusion or OR, so we
+    // layer those on. Split the query on top-level OR (outside quotes) into
+    // branches; search each branch (subtracting -excluded terms by result id);
+    // union the branches, keeping each result's best score.
+    function splitOr(q) {
+      const out = []; let cur = '', inQ = false;
+      for (const t of q.split(/(\s+)/)) {
+        if (!inQ && t === 'OR') { out.push(cur.trim()); cur = ''; continue; }
+        cur += t;
+        if (((t.match(/"/g) || []).length) % 2) inQ = !inQ;
+      }
+      out.push(cur.trim());
+      return out.filter(Boolean);
+    }
+    function parseBranch(branch) {
+      const excludes = [];
+      const positive = branch
+        .replace(/(^|\s)-(?:"([^"]+)"|(\S+))/g, (_, sp, ph, w) => { excludes.push(ph ? `"${ph}"` : w); return sp; })
+        .replace(/\s+/g, ' ').trim();
+      return { positive, excludes };
+    }
+    async function searchBranch(pagefind, branch, opts) {
+      const { positive, excludes } = parseBranch(branch);
+      const main = await pagefind.search(positive || null, opts);
+      if (!excludes.length) return main.results;
+      const drop = new Set();
+      for (const t of excludes) for (const r of (await pagefind.search(t, opts)).results) drop.add(r.id);
+      return main.results.filter((r) => !drop.has(r.id));
+    }
+    async function runSearch(pagefind, query, opts) {
+      const branches = query ? splitOr(query) : [''];
+      if (branches.length <= 1) return searchBranch(pagefind, branches[0] || '', opts);
+      const best = new Map(); // id -> result object, keeping the highest score
+      for (const b of branches) for (const r of await searchBranch(pagefind, b, opts)) {
+        const prev = best.get(r.id); if (!prev || r.score > prev.score) best.set(r.id, r);
+      }
+      return [...best.values()].sort((a, b) => b.score - a.score);
     }
 
     async function run() {
@@ -596,8 +634,7 @@
       statusEl.textContent = browsing ? 'Loading…' : 'Searching…';
 
       const pagefind = await pagefindPromise;
-      const search = await pagefind.search(query || null, opts);
-      pending = search.results;
+      pending = await runSearch(pagefind, query, opts);
       shown = 0;
       resultsEl.innerHTML = '';
 
