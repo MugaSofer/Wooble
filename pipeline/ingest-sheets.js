@@ -140,6 +140,33 @@ const VIALS = '1g550q_InlHWmMsyYoATYCtnxkqUDWtn_y4KkVynVsA0';
   process.stderr.write(`  Cauldron Vials: ${served} vials\n`);
 }
 
+// --- reference generator sheets: pointer records only ------------------------
+// These are big multi-tab Weaverdice generation TOOLS (the Detail Generator has
+// 250k+ cells of single-word random-roll fragments). Full-indexing every cell
+// would bloat the index and drown search in noise, so we emit one findable
+// pointer record per sheet — its name, purpose, and tab list — that links out
+// to the live tool rather than reproducing it.
+const REF_SHEETS = [
+  { id: '1aHyZ7c7TIgt903mPinOakrgli2WZu5IRtiGYPCnCqDE', title: 'Weaver Dice: Detail Generator', tier: 'canon',
+    desc: "Wildbow's Weaverdice detail generator — roll tables for generating a cape's power specifics, quirks, and details by classification." },
+  { id: '1gcJoGA4wwkFbL6fpjaeiQTQ-hKrp6BOChOfgxRn14xk', title: 'Weaver Dice: Trigger Doc', tier: 'canon',
+    desc: "Wildbow's Weaverdice trigger-event tables — the trigger types and forms used to generate a cape's origin." },
+  { id: '1kWxWhvKzAYl98nuvgCQOchw7mgH7aecyB82hSwMtatQ', title: 'Weaver Dice: Detail Generator (Suggestion Sheet)', tier: 'uncertain',
+    desc: 'Community-suggestion companion to the Weaverdice Detail Generator; owned by Wildbow but fed by reader submissions.' },
+];
+for (const s of REF_SHEETS) {
+  const z = await fetchXlsx(s.id);
+  const tabs = [...z['xl/workbook.xml'].toString().matchAll(/<sheet [^>]*name="([^"]*)"/g)]
+    .map((m) => unent(m[1])).filter((t) => !/^(count|frontpage|used|rejected|form )/i.test(t));
+  const text = `${s.desc}\n\nSections: ${tabs.join(', ')}.`;
+  records.push({
+    id: `sheet:ref:${s.id.slice(0, 8)}`, work: 'Weaverdice', workSlug: 'weaverdice', type: 'Reference',
+    tier: s.tier, docTitle: s.title, title: s.title, heading: s.title, text,
+    url: `https://docs.google.com/spreadsheets/d/${s.id}/edit`, date: '', wordCount: words(text),
+  });
+  process.stderr.write(`  ref sheet: ${s.title} (${tabs.length} sections, ${s.tier})\n`);
+}
+
 await mkdir('data/corpus', { recursive: true });
 await writeFile('data/corpus/sheets.json', JSON.stringify(records, null, 2));
 console.log(`\n${records.length} sheet records, ${records.reduce((s, r) => s + r.wordCount, 0).toLocaleString()} words.`);
