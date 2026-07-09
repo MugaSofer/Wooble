@@ -325,7 +325,7 @@
     // semi-canon docs are the campaigns he ran (actual-play, canon-compatible).
     // Per-collection tier labels: Weaverdice splits into his rules/reference vs
     // the campaigns he ran; elsewhere the generic tier names apply.
-    const TIER_LABELS = { canon: 'Canon', semicanon: 'Semi-canon', story: 'Stories', sample: 'Samples', draft: 'Drafts', fanmade: 'Fan-made', unknown: 'Unknown' };
+    const TIER_LABELS = { canon: 'Canon', semicanon: 'Semi-canon', story: 'Stories', sample: 'Samples', draft: 'Drafts', uncertain: 'Uncertain', fanmade: 'Fan-made', unknown: 'Unknown' };
     const TIER_LABELS_BY_WORK = { Weaverdice: { canon: 'Rules & reference', semicanon: 'Campaigns (semi-canon)' } };
     const tierLabel = (work, tier) => (TIER_LABELS_BY_WORK[work] || {})[tier] || TIER_LABELS[tier] || tier;
     const refByWork = new Map();
@@ -730,7 +730,7 @@
       const src = m.source || 'Comment';
       const workPill = work ? `<span class="pill ${catColor(work)}">${esc(work)}</span>` : '';
       // Canon is the default (unlabelled); only non-canon tiers wear a badge.
-      const TIER = { semicanon: ['Semi-canon', 'tier-semicanon'], dream: ['Semi-canon', 'tier-semicanon'], story: ['Story', 'tier-story'], sample: ['Sample', 'tier-sample'], draft: ['Draft', 'tier-draft'], fanmade: ['Fan-made', 'tier-fanmade'], unknown: ['Unknown', 'tier-unknown'] };
+      const TIER = { semicanon: ['Semi-canon', 'tier-semicanon'], dream: ['Semi-canon', 'tier-semicanon'], story: ['Story', 'tier-story'], sample: ['Sample', 'tier-sample'], draft: ['Draft', 'tier-draft'], uncertain: ['Uncertain', 'tier-unknown'], fanmade: ['Fan-made', 'tier-fanmade'], unknown: ['Unknown', 'tier-unknown'] };
       const tierPill = TIER[m.tier] ? `<span class="pill ${TIER[m.tier][1]}">${TIER[m.tier][0]}</span>` : '';
       const REFCOLOR = { Weaverdice: 'c-wd', PactDice: 'c-red', 'PRT Quest': 'c-yellow', 'Short Fiction': 'c-purple', Extras: 'c-grey' };
       const pills = isRef
