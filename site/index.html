@@ -270,6 +270,17 @@
     // Relative path so the bundle resolves under a root (Cloudflare, local) or
     // a subpath (GitHub Pages /Wooble/).
     const pagefindPromise = import('./pagefind/pagefind.js');
+    // A query-less "browse" (empty search + a filter) must read much of the index
+    // to enumerate all matches — several seconds cold, then cached. Warm the index
+    // (via an empty search) as soon as the user shows intent to browse — hovering
+    // or opening Sources — so that one-time load overlaps with them picking a
+    // filter; also gently on idle. This is a head start, not a cure: the real fix
+    // for instant browse is build-time listings (see notes) or a smaller index.
+    // Warm on browse INTENT only (hover/focus Sources) — not on idle — so we don't
+    // impose the full index download on keyword-only visitors who never browse.
+    const warmIndex = (() => { let done = false; return () => { if (done) return; done = true; pagefindPromise.then((pf) => pf.search(null)).catch(() => {}); }; })();
+    srcBtn.addEventListener('pointerenter', warmIndex, { once: true });
+    srcBtn.addEventListener('focus', warmIndex, { once: true });
 
     // Filter data from build-time metadata (loads instantly; tiny file).
     let meta = {};
