@@ -22,8 +22,8 @@
        identical on every device (system fonts varied, e.g. narrow on Samsung). */
     @font-face { font-family: 'Poppins'; font-style: normal; font-weight: 900; font-display: swap; src: url(./fonts/poppins-900.woff2) format('woff2'); }
     .logo { font-size: clamp(3.2rem, 10vw, 5.2rem); font-weight: 900; letter-spacing: -1px; font-family: 'Poppins', "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
-    .logo span { color: var(--accent); }
-	.logo span2 { color: var(--accent2); }
+    .logo .o-red { color: var(--accent); }
+    .logo .o-gold { color: var(--accent2); }
     .tag { color: var(--muted); margin-top: .25rem; font-size: 1.05rem; }
     main { width: min(720px, 92vw); padding-bottom: 4rem; }
     #q {
@@ -164,7 +164,7 @@
 </head>
 <body>
   <header>
-    <div class="logo">W<span2>o</span2><span>o</span>ble</div>
+    <div class="logo">W<span class="o-gold">o</span><span class="o-red">o</span>ble</div>
     <div class="tag">Search across Wildbow's web serials.</div>
   </header>
 
@@ -279,6 +279,9 @@
     // for instant browse is build-time listings (see notes) or a smaller index.
     // Warm on browse INTENT only (hover/focus Sources) — not on idle — so we don't
     // impose the full index download on keyword-only visitors who never browse.
+    // Eagerly init (wasm + core metadata, ~130KB) during page-load idle time so
+    // the first keystroke's search only fetches its own index chunks.
+    pagefindPromise.then((pf) => pf.init()).catch(() => {});
     const warmIndex = (() => { let done = false; return () => { if (done) return; done = true; pagefindPromise.then((pf) => pf.search(null)).catch(() => {}); }; })();
     srcBtn.addEventListener('pointerenter', warmIndex, { once: true });
     srcBtn.addEventListener('focus', warmIndex, { once: true });
@@ -694,17 +697,22 @@
     }
     async function searchBranch(pagefind, branch, opts) {
       const { positive, excludes } = parseBranch(branch);
-      const main = await pagefind.search(positive || null, opts);
-      if (!excludes.length) return main.results;
-      const drop = new Set();
-      for (const t of excludes) for (const r of (await pagefind.search(t, opts)).results) drop.add(r.id);
+      // The positive search and each exclusion search are independent — run them
+      // concurrently (Pagefind dedupes chunk loads, so this is safe).
+      const [main, ...excluded] = await Promise.all([
+        pagefind.search(positive || null, opts),
+        ...excludes.map((t) => pagefind.search(t, opts)),
+      ]);
+      if (!excluded.length) return main.results;
+      const drop = new Set(excluded.flatMap((x) => x.results.map((r) => r.id)));
       return main.results.filter((r) => !drop.has(r.id));
     }
     async function runSearch(pagefind, query, opts) {
       const branches = query ? splitOr(query) : [''];
       if (branches.length <= 1) return searchBranch(pagefind, branches[0] || '', opts);
+      const settled = await Promise.all(branches.map((b) => searchBranch(pagefind, b, opts)));
       const best = new Map(); // id -> result object, keeping the highest score
-      for (const b of branches) for (const r of await searchBranch(pagefind, b, opts)) {
+      for (const results of settled) for (const r of results) {
         const prev = best.get(r.id); if (!prev || r.score > prev.score) best.set(r.id, r);
       }
       return [...best.values()].sort((a, b) => b.score - a.score);
@@ -719,6 +727,7 @@
 
       if (!query && !browsing) {
         queryTerms = terms;
+        pending = null; // drop stale results so a "Show" change can't resurrect them
         resultsEl.innerHTML = '';
         statusEl.textContent = '';
         moreBtn.style.display = 'none';
@@ -737,9 +746,12 @@
       resultsEl.innerHTML = '';
 
       const total = pending.length;
+      // "chapters" only when browsing fiction works alone; any WoG/reference
+      // selection (or no filter at all) mixes record types, so say "results".
+      const fictionOnly = browsing && selectedCategories.size > 0 && [...selectedCategories].every((c) => fictionMap.has(c));
       statusEl.textContent = total === 0
         ? 'No results.'
-        : `${total.toLocaleString()} ${browsing ? 'chapter' : 'result'}${total === 1 ? '' : 's'}`;
+        : `${total.toLocaleString()} ${fictionOnly ? 'chapter' : 'result'}${total === 1 ? '' : 's'}`;
       await renderMore(myRun);
     }
 
