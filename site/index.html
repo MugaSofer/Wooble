@@ -114,9 +114,6 @@
     .wog-section.dim { opacity: .38; }
     .dd-item.dim { opacity: .38; }
     #status { color: var(--muted); font-size: .85rem; margin: 1rem .2rem .4rem; min-height: 1.2em; }
-    #notice { color: var(--muted); font-size: .82rem; font-style: italic; margin: -.15rem .2rem .55rem; }
-    #notice:empty { display: none; }
-    #notice code { font-style: normal; }
     .search-hint { color: var(--muted); font-size: .78rem; margin: .4rem .3rem 0; opacity: .85; }
     .search-hint code { font-size: .95em; background: color-mix(in srgb, var(--muted) 16%, transparent); padding: .05rem .32rem; border-radius: 4px; }
     #results { list-style: none; margin: 0; padding: 0; }
@@ -202,7 +199,6 @@
       </label>
     </div>
     <div id="status"></div>
-    <div id="notice"></div>
     <ol id="results"></ol>
     <button id="more" type="button">Show more</button>
   </main>
@@ -260,7 +256,6 @@
     const srcBtn = document.getElementById('srcBtn');
     const srcPanel = document.getElementById('srcPanel');
     const statusEl = document.getElementById('status');
-    const noticeEl = document.getElementById('notice');
     const resultsEl = document.getElementById('results');
     const moreBtn = document.getElementById('more');
     const matchesEl = document.getElementById('matches');
@@ -726,7 +721,6 @@
         queryTerms = terms;
         resultsEl.innerHTML = '';
         statusEl.textContent = '';
-        noticeEl.textContent = '';
         moreBtn.style.display = 'none';
         return;
       }
@@ -741,28 +735,12 @@
       pending = results;
       shown = 0;
       resultsEl.innerHTML = '';
-      noticeEl.textContent = '';
 
       const total = pending.length;
       statusEl.textContent = total === 0
         ? 'No results.'
         : `${total.toLocaleString()} ${browsing ? 'chapter' : 'result'}${total === 1 ? '' : 's'}`;
       await renderMore(myRun);
-
-      // Fuzzy-match notice. Pagefind silently expands a typo into many loosely-
-      // related, low-scoring results (e.g. "triger" → 2000+ at score ~9). For a
-      // plain single-word query whose best hit is weak, confirm with a quoted
-      // (exact) search — if there's no exact match at all, say so, like Google's
-      // "no results for X, showing results for Y". (Prefixes/stems score high, so
-      // they never trip this.)
-      const single = query && !/[\s"()-]/.test(query) && !/\bOR\b/.test(query);
-      if (single && total && results[0].score < 30) {
-        const exact = await pagefind.search('"' + query + '"');
-        if (myRun !== runSeq) return;
-        if (!exact.results.length) {
-          noticeEl.innerHTML = `No exact matches for “${esc(query)}” — showing loosely-related results. Tip: wrap a term in <code>"quotes"</code> for exact matching.`;
-        }
-      }
     }
 
     async function renderMore(myRun) {
