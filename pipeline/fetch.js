@@ -30,6 +30,30 @@ function cachePath(url) {
   return join(CACHE_DIR, `${h}.json`);
 }
 
+const TIMEOUT_MS = 30_000;
+
+// Fetch with retries + backoff. Retries cover 429/5xx responses, thrown network
+// errors (DNS blips, connection resets), and hung sockets (30s timeout) — so one
+// transient failure mid-crawl doesn't abort a long ingest run.
+async function politeFetch(url, headers) {
+  let res, lastErr;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (attempt) await sleep(2000 * attempt);
+    try {
+      res = await fetch(url, { headers, signal: AbortSignal.timeout(TIMEOUT_MS) });
+    } catch (err) {
+      lastErr = err;
+      res = null;
+      continue;
+    }
+    if (res.status === 429 || res.status >= 500) continue;
+    break;
+  }
+  if (!res) throw lastErr;
+  if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+  return res;
+}
+
 // Returns parsed JSON. Uses on-disk cache unless { fresh: true }.
 export async function fetchJSON(url, { fresh = false } = {}) {
   const cp = cachePath(url);
@@ -42,19 +66,7 @@ export async function fetchJSON(url, { fresh = false } = {}) {
   }
 
   await politeWait();
-  let res;
-  for (let attempt = 0; attempt < 4; attempt++) {
-    res = await fetch(url, {
-      headers: { 'User-Agent': UA, Accept: 'application/json' },
-    });
-    if (res.status === 429 || res.status >= 500) {
-      await sleep(2000 * (attempt + 1));
-      continue;
-    }
-    break;
-  }
-  if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
-
+  const res = await politeFetch(url, { 'User-Agent': UA, Accept: 'application/json' });
   const data = await res.json();
   await mkdir(dirname(cp), { recursive: true });
   await writeFile(cp, JSON.stringify(data));
@@ -73,19 +85,7 @@ export async function fetchText(url, { fresh = false } = {}) {
   }
 
   await politeWait();
-  let res;
-  for (let attempt = 0; attempt < 4; attempt++) {
-    res = await fetch(url, {
-      headers: { 'User-Agent': BROWSER_UA, Accept: 'text/html' },
-    });
-    if (res.status === 429 || res.status >= 500) {
-      await sleep(2000 * (attempt + 1));
-      continue;
-    }
-    break;
-  }
-  if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
-
+  const res = await politeFetch(url, { 'User-Agent': BROWSER_UA, Accept: 'text/html' });
   const text = await res.text();
   await mkdir(dirname(cp), { recursive: true });
   await writeFile(cp, text);

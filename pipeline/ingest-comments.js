@@ -15,9 +15,18 @@ const CORPUS_DIR = 'data/corpus';
 const PER_PAGE = 100;
 
 // Drop quoted text (blockquotes) so a comment keeps only the commenter's own
-// words — the parent comment is captured separately as context.
-const cleanComment = (html) =>
-  htmlToText(String(html ?? '').replace(/<blockquote[\s\S]*?<\/blockquote>/gi, ''));
+// words — the parent comment is captured separately as context. Strip innermost
+// quotes first and repeat until stable: a single lazy /<blockquote[\s\S]*?<\/blockquote>/
+// pass stops at the FIRST close tag, so a nested quote leaks the outer quote's
+// tail as if it were the commenter's own words.
+const cleanComment = (html) => {
+  let s = String(html ?? '');
+  for (let prev; prev !== s; ) {
+    prev = s;
+    s = s.replace(/<blockquote\b[^>]*>(?:(?!<blockquote\b)[\s\S])*?<\/blockquote\s*>/gi, '');
+  }
+  return htmlToText(s);
+};
 
 const SITES = [
   { slug: 'worm', site: 'parahumans.wordpress.com', work: 'Worm' },

@@ -10,6 +10,9 @@ import { join } from 'node:path';
 const CORPUS_DIR = 'data/corpus';
 const BUILD_DIR = 'build';
 const MIN_WORDS = 50; // skip announcement/nav-only posts
+// Genuinely tiny canon, exempt from the word floor: Interlude 27b really is a
+// one-sentence chapter ("You needed worthy opponents.") — Worm's shortest.
+const FORCE_SERVE = new Set(['https://parahumans.wordpress.com/2013/08/29/interlude-27b/']);
 
 // A few serial chapters are really semi-canon side pieces (April Fool's dream
 // chapters, etc.). Reclassify them by canonical URL out of the main serial and
@@ -260,7 +263,7 @@ async function main() {
     // Ref sections are shorter than chapters; sheet rows (a cape's confirmed
     // affiliation, a vial's stat line) are terser still and shouldn't be culled.
     const floor = isWoG ? 1 : isRef ? (String(rec.id).startsWith('sheet:') ? 5 : 20) : MIN_WORDS;
-    if (rec.wordCount < floor) { skipped++; continue; }
+    if (rec.wordCount < floor && !FORCE_SERVE.has(rec.url)) { skipped++; continue; }
     // Serve curated WoG in full (fiction, repository quotes, cited entries). The
     // Haiku-classified dumps — blog comments and the bulk Reddit pull — are the
     // noisy sources, so they're filtered to the "canon" tag; everything else

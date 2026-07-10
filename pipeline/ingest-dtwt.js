@@ -16,7 +16,9 @@ const words = (s) => String(s || '').trim().split(/\s+/).filter(Boolean).length;
 async function allComments() {
   const out = [];
   let before = '';
-  for (let i = 0; i < 10; i++) {
+  const MAX_PAGES = 10;
+  let page = 0;
+  for (; page < MAX_PAGES; page++) {
     const url = `${API}?author=${AUTHOR}&subreddit=${SUB}&size=100&sort=desc${before ? `&before=${before}` : ''}`;
     const r = await fetch(url, { headers: { 'User-Agent': 'wooble-fan-archive/0.1' } });
     if (!r.ok) throw new Error('PullPush HTTP ' + r.status);
@@ -26,6 +28,7 @@ async function allComments() {
     before = items[items.length - 1].created_utc;
     await sleep(700);
   }
+  if (page === MAX_PAGES) console.warn(`ingest-dtwt: hit the ${MAX_PAGES}-page cap — older comments may be missing; raise MAX_PAGES.`);
   return out;
 }
 

@@ -36,8 +36,11 @@ if (limit < comments.length) {
   pick = Array.from({ length: limit }, (_, i) => comments[Math.floor(i * step)]);
 }
 
-await rm(BATCH_DIR, { recursive: true, force: true });
+// Clear only OUR batch-NNN.json files — ingest-reddit-submissions.js writes its
+// post-*.json batches into this same dir and they must survive a re-run here
+// (same discipline as convert-reddit.js).
 await mkdir(BATCH_DIR, { recursive: true });
+for (const f of await readdir(BATCH_DIR)) if (/^batch-\d+\.json$/.test(f)) await rm(join(BATCH_DIR, f));
 await mkdir(PARTS_DIR, { recursive: true });
 
 let b = 0;

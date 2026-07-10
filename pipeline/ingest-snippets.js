@@ -21,7 +21,9 @@ async function get(url) {
 // Every dated permalink in the category listing (paginated, though there's one page).
 async function postList() {
   const out = new Map();
-  for (let pg = 1; pg <= 4; pg++) {
+  const MAX_PAGES = 4;
+  let pg = 1;
+  for (; pg <= MAX_PAGES; pg++) {
     let html; try { html = await get(CAT + (pg > 1 ? `page/${pg}/` : '')); } catch { break; }
     let found = 0;
     for (const a of parse(html).querySelectorAll('a')) {
@@ -31,6 +33,7 @@ async function postList() {
     if (!found) break;
     await sleep(500);
   }
+  if (pg > MAX_PAGES) console.warn(`ingest-snippets: hit the ${MAX_PAGES}-page listing cap while still finding posts — raise MAX_PAGES.`);
   return out;
 }
 

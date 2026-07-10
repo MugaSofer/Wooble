@@ -43,11 +43,11 @@ browser only downloads the fragments a query touches).
 
 | Serial            	| Source                          | Via                       | Entries	 | Status |
 | --------------------- | ------------------------------- | ------------------------- | -------- | ------ |
-| Worm              	| `parahumans.wordpress.com`      | WordPress.com API         | 313      | ✅      |
+| Worm              	| `parahumans.wordpress.com`      | WordPress.com API         | 315      | ✅      |
 | Pact              	| `pactwebserial.wordpress.com`   | WordPress.com API         | 154      | ✅      |
 | Twig              	| `twigserial.wordpress.com`      | WordPress.com API         | 321      | ✅      |
-| Pale              	| `palewebserial.wordpress.com`   | WordPress.com API         | 336      | ✅      |
-| Ward / Glow-worm  	| `parahumans.net`                | HTML scrape (TOC → pages) | 280      | ✅      |
+| Pale              	| `palewebserial.wordpress.com`   | WordPress.com API         | 360      | ✅      |
+| Ward / Glow-worm  	| `parahumans.net`                | HTML scrape (TOC → pages) | 281      | ✅      |
 | Claw              	| `clawwebserial.blog`            | WordPress.com API         | 40       | ✅      |
 | Seek             		| `seekwebserial.wordpress.com`   | WordPress.com API         | 43       | ✅      |
 | WoG — blog comments	| serial comment sections		  | WordPress.com API         | 3,388    | ✅      |
