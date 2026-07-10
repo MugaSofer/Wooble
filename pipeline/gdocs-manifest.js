@@ -6,8 +6,19 @@
 //
 // Output: data/raw/gdocs-manifest.json  [{ id, title, tier, section, hub }]
 // Fetching + record-building happen in later steps; this is just the plan.
+//
+// ⚠️ SUPERSEDED by gdocs-provenance.js, which writes the SAME output file from
+// stronger evidence (Drive ownership ground truth + canon link-graph). Running
+// this clobbers that manifest with the older heuristic-only tiers. Kept for
+// reference; refuses to run without --force.
 import { parse } from 'node-html-parser';
 import { readFileSync, writeFileSync } from 'node:fs';
+
+if (!process.argv.includes('--force')) {
+  console.error('gdocs-manifest.js is superseded by gdocs-provenance.js (same output file, weaker evidence).');
+  console.error('Re-run with --force only if you really mean to overwrite data/raw/gdocs-manifest.json.');
+  process.exit(1);
+}
 
 const RAW = 'data/raw/gdocs';
 // Index docs we trust to *describe* provenance (id → friendly hub name).

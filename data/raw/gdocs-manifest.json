@@ -427,13 +427,6 @@
     "hub": "Welcome Doc"
   },
   {
-    "id": "1ZJ_oJWN7V_M6C6GM50ip0hl4N3SnO9TQImDUq1laldE",
-    "title": "Campaign Template",
-    "tier": "fanmade",
-    "section": "Other Resources / GM Section / Campaign Template",
-    "hub": "Welcome Doc"
-  },
-  {
     "id": "1CMYKAHnLe6_mw88p8I-X0u6QfaNVbWotWWpLQ5g8XLQ",
     "title": "Capes in the Dark system welcome doc",
     "tier": "fanmade",
@@ -476,13 +469,6 @@
     "hub": "Welcome Doc"
   },
   {
-    "id": "1Xer5H7RGsIslVepIRoR7to9Gqsi1Foz5uCiWTk2TmLY",
-    "title": "CHANGER 1.0",
-    "tier": "fanmade",
-    "section": "Main Resources",
-    "hub": "Welcome Doc"
-  },
-  {
     "id": "1iyXVBvOw3bL4_DKle_9GxD64Bgf3zncnydWqH1HF4Mc",
     "title": "Changer 1.0 Advice Doc",
     "tier": "fanmade",
@@ -495,20 +481,6 @@
     "tier": "fanmade",
     "section": "Non Essential / Example Gens/Premades",
     "hub": "The Vault"
-  },
-  {
-    "id": "1EA2fVCDAiSyGxLOT4AjovthduBBetnIugafva9cBpO0",
-    "title": "CHANGERS 2.0",
-    "tier": "fanmade",
-    "section": "Main Resources",
-    "hub": "Welcome Doc"
-  },
-  {
-    "id": "15peMSA3fdp9EK9urwvYps4Q0z06EQ6iJdVggD81a2bg",
-    "title": "Character Sheet",
-    "tier": "fanmade",
-    "section": "Main Resources",
-    "hub": "Welcome Doc"
   },
   {
     "id": "1psJbM3c89SAPQ14LO9nXnRmZBy5Q8xptBLrV6kG0W40",
@@ -770,13 +742,6 @@
     "hub": "The Vault"
   },
   {
-    "id": "1b1vKIRQCIBgoS-YNgBNvk10xf4lJKk2xZOgaOoXdAXU",
-    "title": "Luck (readable)",
-    "tier": "fanmade",
-    "section": "Other Resources / Misc. / Luck (readable)",
-    "hub": "Welcome Doc"
-  },
-  {
     "id": "1t-d5qN5nwHNA6x9lAFNrXALo3QEro2-ZKaAD2vFnQs4",
     "title": "Luck Readable",
     "tier": "fanmade",
@@ -838,13 +803,6 @@
     "tier": "fanmade",
     "section": "Fan-Made",
     "hub": "The Vault"
-  },
-  {
-    "id": "1UKML29fDh_5L_98wrnZmX_cW_ZgTcWy_Mu1ewBYLuSQ",
-    "title": "NPC Bestiary",
-    "tier": "fanmade",
-    "section": "Other Resources / GM Section / NPC Bestiary",
-    "hub": "Welcome Doc"
   },
   {
     "id": "1lKnw5tRGYuYaeqdy9Nsdlypdi0GHX-D0jXcStTcbXL0",
@@ -936,13 +894,6 @@
     "tier": "fanmade",
     "section": "Non Essential / Example Gens/Premades",
     "hub": "The Vault"
-  },
-  {
-    "id": "1ZyhXtloAiH8tt7zcB8QVIZg6j3_CCRU2RELBLhZSZ6c",
-    "title": "Queue Games",
-    "tier": "fanmade",
-    "section": "Other Resources / Misc. / Queue Games How to play in and run games that take place in the queue for actual Weaverdice",
-    "hub": "Welcome Doc"
   },
   {
     "id": "1_bO1cH7w-X3cXb4GaCReQFF1B3gfsIkMk6KfSP9LZL0",
@@ -1071,20 +1022,6 @@
     "hub": "The Vault"
   },
   {
-    "id": "177P6wOpW-TwLQXbC5xdju6EIHhwd6TCZkK26WuiDIrw",
-    "title": "THINKERS 1.0",
-    "tier": "fanmade",
-    "section": "Main Resources",
-    "hub": "Welcome Doc"
-  },
-  {
-    "id": "1wFzwramWoLTtsgAOV9VpziStPMKSkBQVnextKTl2KAg",
-    "title": "THINKERS 2.0",
-    "tier": "fanmade",
-    "section": "Main Resources",
-    "hub": "Welcome Doc"
-  },
-  {
     "id": "1MTME2dXL2hmfYI0qyfaxQshDmcgV_d9q8t8GzLNZjCY",
     "title": "Tinker Specialties 2.0",
     "tier": "fanmade",
@@ -1104,13 +1041,6 @@
     "tier": "fanmade",
     "section": "Non Essential / Example Gens/Premades",
     "hub": "The Vault"
-  },
-  {
-    "id": "1_OO7evm907wyO7ledSL-obxrLvQ6XzpkuTcRqJAhZV4",
-    "title": "TINKERS 2.0",
-    "tier": "fanmade",
-    "section": "Main Resources",
-    "hub": "Welcome Doc"
   },
   {
     "id": "19v42QKBKAOsNBQ2KvPQ-_cnIjW8j6PF4QIy14j8P6JM",
@@ -1363,6 +1293,76 @@
     "tier": "fanmade",
     "section": "Non Essential / Example Gens/Premades",
     "hub": "The Vault"
+  },
+  {
+    "id": "1ZJ_oJWN7V_M6C6GM50ip0hl4N3SnO9TQImDUq1laldE",
+    "title": "Campaign Template",
+    "tier": "unknown",
+    "section": "Other Resources / GM Section / Campaign Template",
+    "hub": "Welcome Doc"
+  },
+  {
+    "id": "1Xer5H7RGsIslVepIRoR7to9Gqsi1Foz5uCiWTk2TmLY",
+    "title": "CHANGER 1.0",
+    "tier": "unknown",
+    "section": "Main Resources",
+    "hub": "Welcome Doc"
+  },
+  {
+    "id": "1EA2fVCDAiSyGxLOT4AjovthduBBetnIugafva9cBpO0",
+    "title": "CHANGERS 2.0",
+    "tier": "unknown",
+    "section": "Main Resources",
+    "hub": "Welcome Doc"
+  },
+  {
+    "id": "15peMSA3fdp9EK9urwvYps4Q0z06EQ6iJdVggD81a2bg",
+    "title": "Character Sheet",
+    "tier": "unknown",
+    "section": "Main Resources",
+    "hub": "Welcome Doc"
+  },
+  {
+    "id": "1b1vKIRQCIBgoS-YNgBNvk10xf4lJKk2xZOgaOoXdAXU",
+    "title": "Luck (readable)",
+    "tier": "unknown",
+    "section": "Other Resources / Misc. / Luck (readable)",
+    "hub": "Welcome Doc"
+  },
+  {
+    "id": "1UKML29fDh_5L_98wrnZmX_cW_ZgTcWy_Mu1ewBYLuSQ",
+    "title": "NPC Bestiary",
+    "tier": "unknown",
+    "section": "Other Resources / GM Section / NPC Bestiary",
+    "hub": "Welcome Doc"
+  },
+  {
+    "id": "1ZyhXtloAiH8tt7zcB8QVIZg6j3_CCRU2RELBLhZSZ6c",
+    "title": "Queue Games",
+    "tier": "unknown",
+    "section": "Other Resources / Misc. / Queue Games How to play in and run games that take place in the queue for actual Weaverdice",
+    "hub": "Welcome Doc"
+  },
+  {
+    "id": "177P6wOpW-TwLQXbC5xdju6EIHhwd6TCZkK26WuiDIrw",
+    "title": "THINKERS 1.0",
+    "tier": "unknown",
+    "section": "Main Resources",
+    "hub": "Welcome Doc"
+  },
+  {
+    "id": "1wFzwramWoLTtsgAOV9VpziStPMKSkBQVnextKTl2KAg",
+    "title": "THINKERS 2.0",
+    "tier": "unknown",
+    "section": "Main Resources",
+    "hub": "Welcome Doc"
+  },
+  {
+    "id": "1_OO7evm907wyO7ledSL-obxrLvQ6XzpkuTcRqJAhZV4",
+    "title": "TINKERS 2.0",
+    "tier": "unknown",
+    "section": "Main Resources",
+    "hub": "Welcome Doc"
   },
   {
     "id": "1Py-zQBE94hm8Iu0Oqoy_p_svALXYkKVpTiq-i7PwCwE",

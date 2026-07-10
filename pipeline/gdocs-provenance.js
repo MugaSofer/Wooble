@@ -139,10 +139,12 @@ for (const [id, recs] of appear) {
     if (fanRec) ev.push('under fan heading: ' + fanRec.path.slice(-2).join(' › '));
     if (authorTxt) ev.push('community author / alt-system');
     const onWiki = recs.some((r) => r.hub === 'Fandom wiki'); if (onWiki) ev.push('listed on Fandom wiki');
-    // Ownership is ground truth; index markers back it up. Anything not shown to
-    // be WB's is treated as community (fan-made) — the safe direction.
-    tier = owned || boar || official ? 'canon' : fanRec || authorTxt ? 'fanmade' : cited ? 'canon' : 'fanmade';
-    if (!ev.length) ev.push('community (not in verified WB-owned set)');
+    // Ownership is ground truth; index markers back it up. Positive fan signals
+    // → fan-made; a doc with no decisive evidence either way is 'unknown' so it
+    // surfaces for human review (neither tier is served, so this only affects
+    // the review tables, not the site).
+    tier = owned || boar || official ? 'canon' : fanRec || authorTxt ? 'fanmade' : cited ? 'canon' : 'unknown';
+    if (!ev.length) ev.push('no decisive provenance evidence — needs review');
   }
   rows.push({ id, title: titleById.get(id), tier, hub: recs[0]?.hub || '', section: recs[0]?.path.join(' / ') || '', evidence: ev.join('; ') });
 }

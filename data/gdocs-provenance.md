@@ -63,18 +63,14 @@
 | fanmade | BRUTE | under fan heading: Non Essential › Example Gens/Premades |
 | fanmade | Campaign Checklist | under fan heading: Non Essential › Example Gens/Premades |
 | fanmade | Campaign Main Page Template | under fan heading: Non Essential › Example Gens/Premades |
-| fanmade | Campaign Template | community (not in verified WB-owned set) |
 | fanmade | Capes in the Dark system welcome doc | under fan heading: Non Essential › Example Gens/Premades; community author / alt-system |
 | fanmade | Capes In The Dark: Engagement Rolls | under fan heading: Non Essential › Example Gens/Premades; community author / alt-system |
 | fanmade | CaptNameless’s WD Rule Options | under fan heading: Fan-Made |
 | fanmade | CASE 53 ALT DOC | under fan heading: Fan-Made |
 | fanmade | Case 53 Power Generation Guide | under fan heading: Fan-Made Essentials › Case 53 generation |
 | fanmade | Cauldron Application Template | under fan heading: Non Essential › Example Gens/Premades |
-| fanmade | CHANGER 1.0 | community (not in verified WB-owned set) |
 | fanmade | Changer 1.0 Advice Doc | under fan heading: Fan-Made |
 | fanmade | Changer Stuff | under fan heading: Non Essential › Example Gens/Premades |
-| fanmade | CHANGERS 2.0 | community (not in verified WB-owned set) |
-| fanmade | Character Sheet | listed on Fandom wiki |
 | fanmade | Character Sheet MK. 2.5 | under fan heading: Fan-Made |
 | fanmade | Character Sheet WD 3.0 | under fan heading: Fan-Made |
 | fanmade | Classic Document | under fan heading: Fan-Made Essentials |
@@ -112,7 +108,6 @@
 | fanmade | Light Pregens | under fan heading: Non Essential › Example Gens/Premades |
 | fanmade | Log of conversation about new tinkers | under fan heading: Fan-Made |
 | fanmade | Luck | under fan heading: Fan-Made |
-| fanmade | Luck (readable) | community (not in verified WB-owned set) |
 | fanmade | Luck Readable | under fan heading: Non Essential › Example Gens/Premades |
 | fanmade | LUGS Tinker Outfittings | under fan heading: Non Essential › Example Gens/Premades |
 | fanmade | marsmissionguy’s Weaverdice Classifications and Types Compilation | under fan heading: Non Essential › Example Gens/Premades; community author / alt-system |
@@ -122,7 +117,6 @@
 | fanmade | Mover rework ideas | under fan heading: Non Essential › Example Gens/Premades |
 | fanmade | New Character Sheet | under fan heading: Fan-Made |
 | fanmade | New Character Sheet Revision Totally Blank 0.0 | under fan heading: Fan-Made |
-| fanmade | NPC Bestiary | community (not in verified WB-owned set) |
 | fanmade | NPC Template | under fan heading: Non Essential › Example Gens/Premades |
 | fanmade | Old Version of ELEMENTS | under fan heading: Fan-Made |
 | fanmade | Organization template | under fan heading: Non Essential › Example Gens/Premades |
@@ -136,7 +130,6 @@
 | fanmade | Prosthetic Tinker Tables | under fan heading: Non Essential › Example Gens/Premades |
 | fanmade | Public Campaign Logs Archives | under fan heading: Non Essential › Example Gens/Premades |
 | fanmade | Queue Game Copypasta | under fan heading: Non Essential › Example Gens/Premades |
-| fanmade | Queue Games | community (not in verified WB-owned set) |
 | fanmade | Rivenland ⚔️ Power Mechanics | under fan heading: Non Essential › Example Gens/Premades |
 | fanmade | Rollable Wound Charts | under fan heading: Non Essential › Example Gens/Premades |
 | fanmade | Running an Endbringer Fight | under fan heading: Non Essential › Example Gens/Premades |
@@ -155,12 +148,9 @@
 | fanmade | The Conglomerate | under fan heading: Non Essential › Example Gens/Premades |
 | fanmade | The Power Vault | under fan heading: Non Essential › Example Gens/Premades |
 | fanmade | The Suits: Notes | under fan heading: Non Essential › Example Gens/Premades |
-| fanmade | THINKERS 1.0 | community (not in verified WB-owned set) |
-| fanmade | THINKERS 2.0 | community (not in verified WB-owned set) |
 | fanmade | Tinker Specialties 2.0 | under fan heading: Non Essential › Example Gens/Premades |
 | fanmade | Tinker Table Template | under fan heading: Fan-Made Essentials › Tinker Table Template |
 | fanmade | Tinker Tables - Master | under fan heading: Non Essential › Example Gens/Premades |
-| fanmade | TINKERS 2.0 | community (not in verified WB-owned set) |
 | fanmade | Trigger Writing Guide | under fan heading: Fan-Made Essentials › Power Generation Guide |
 | fanmade | TRUMP | under fan heading: Fan-Made Essentials › Classification Docs (Fanon) |
 | fanmade | Trump Rework | under fan heading: Fan-Made Essentials › Classification Docs (Fanon) |
@@ -197,6 +187,16 @@
 | fanmade | Worm World Synopsis | under fan heading: Non Essential › Example Gens/Premades |
 | fanmade | Worm: Treasure Island | under fan heading: Non Essential › Example Gens/Premades |
 | fanmade | Writing Triggers | under fan heading: Non Essential › Example Gens/Premades |
+| unknown | Campaign Template | no decisive provenance evidence — needs review |
+| unknown | CHANGER 1.0 | no decisive provenance evidence — needs review |
+| unknown | CHANGERS 2.0 | no decisive provenance evidence — needs review |
+| unknown | Character Sheet | listed on Fandom wiki |
+| unknown | Luck (readable) | no decisive provenance evidence — needs review |
+| unknown | NPC Bestiary | no decisive provenance evidence — needs review |
+| unknown | Queue Games | no decisive provenance evidence — needs review |
+| unknown | THINKERS 1.0 | no decisive provenance evidence — needs review |
+| unknown | THINKERS 2.0 | no decisive provenance evidence — needs review |
+| unknown | TINKERS 2.0 | no decisive provenance evidence — needs review |
 | excluded | Guide for Newcomers (aimed at WD 2.0?) | excluded (alt-system / index) |
 | excluded | List of former or current WD Campaigns | excluded (alt-system / index) |
 | excluded | Skitterdice | excluded (alt-system / index) |
