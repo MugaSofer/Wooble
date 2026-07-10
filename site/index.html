@@ -264,6 +264,7 @@
     const PAGE = 10;
     let pending = null;   // current result list awaiting render
     let shown = 0;
+    let runSeq = 0;       // monotonic search id; only the latest search may mutate state / render
     let queryTerms = [];  // terms to highlight in WoG question/answer
 
     // Pagefind loads in the background; it is only awaited when a search runs.
@@ -653,7 +654,7 @@
     sortEl.addEventListener('change', run);
     yearFromEl.addEventListener('change', run);
     yearToEl.addEventListener('change', run);
-    moreBtn.addEventListener('click', renderMore);
+    moreBtn.addEventListener('click', () => renderMore());
     matchesEl.addEventListener('change', () => { if (pending) { resultsEl.innerHTML = ''; shown = 0; renderMore(); } });
 
     // Terms to highlight / build "Matches" snippets around: treat a "quoted
@@ -710,12 +711,14 @@
     }
 
     async function run() {
+      const myRun = ++runSeq; // claim the latest slot; anything older must not render
       const query = qEl.value.trim();
-      queryTerms = parseTerms(query);
+      const terms = parseTerms(query);
       const { opts, refined } = buildOptions();
       const browsing = !query && refined;
 
       if (!query && !browsing) {
+        queryTerms = terms;
         resultsEl.innerHTML = '';
         statusEl.textContent = '';
         moreBtn.style.display = 'none';
@@ -724,7 +727,12 @@
       statusEl.textContent = browsing ? 'Loading…' : 'Searching…';
 
       const pagefind = await pagefindPromise;
-      pending = await runSearch(pagefind, query, opts);
+      const results = await runSearch(pagefind, query, opts);
+      if (myRun !== runSeq) return; // a newer search started while we awaited — abandon this one
+      // Adopt the highlight terms only now that we've won, so they always match the
+      // results actually rendered (prevents "potato" highlighting a stale query).
+      queryTerms = terms;
+      pending = results;
       shown = 0;
       resultsEl.innerHTML = '';
 
@@ -732,12 +740,13 @@
       statusEl.textContent = total === 0
         ? 'No results.'
         : `${total.toLocaleString()} ${browsing ? 'chapter' : 'result'}${total === 1 ? '' : 's'}`;
-      await renderMore();
+      await renderMore(myRun);
     }
 
-    async function renderMore() {
+    async function renderMore(myRun) {
       const slice = pending.slice(shown, shown + PAGE);
       const data = await Promise.all(slice.map((r) => r.data()));
+      if (myRun != null && myRun !== runSeq) return; // superseded while fragments loaded
       resultsEl.insertAdjacentHTML('beforeend', data.map(card).join(''));
       shown += slice.length;
       moreBtn.style.display = shown < pending.length ? 'block' : 'none';
