@@ -24,6 +24,12 @@ const git = (args, opts = {}) =>
 try {
   rmSync(INDEX, { force: true });
   const env = { ...process.env, GIT_INDEX_FILE: INDEX };
+  // Drop Pagefind's prebuilt-UI bundles before deploying — we use our own UI and
+  // only load pagefind.js at runtime, so these ~350KB never ship. (Pagefind
+  // regenerates them each build; we just don't publish them.)
+  for (const f of ['pagefind-ui.js', 'pagefind-ui.css', 'pagefind-modular-ui.js', 'pagefind-modular-ui.css',
+                   'pagefind-component-ui.js', 'pagefind-component-ui.css', 'pagefind-highlight.js'])
+    rmSync(resolve(SITE, 'pagefind', f), { force: true });
   // Stage site/'s contents at the tree root, forcing in the git-ignored
   // pagefind/ bundle and meta.json.
   git(['--work-tree=' + SITE, 'add', '-A', '-f', '.'], { cwd: SITE, env });

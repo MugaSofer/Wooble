@@ -4,6 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Wooble — search Wildbow's serials</title>
+  <meta name="description" content="Search across Wildbow's web serials — Worm, Ward, Pact, Pale, Twig, Claw, Seek — plus his Word of God and tabletop material.">
+  <!-- Social unfurls (Discord/Reddit). Static default only — GitHub Pages can't
+       render per-query previews — but far better than a bare URL. -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Wooble — search Wildbow's serials">
+  <meta property="og:description" content="Search Wildbow's web serials, Word of God, and tabletop material — snippets that link out to the source.">
+  <meta property="og:url" content="https://mugasofer.github.io/Wooble/">
+  <meta name="twitter:card" content="summary">
+  <!-- Register Wooble as a browser address-bar search engine. -->
+  <link rel="search" type="application/opensearchdescription+xml" title="Wooble" href="opensearch.xml">
   <style>
     :root {
       --bg: #0f1115; --panel: #171a21; --ink: #e8eaed; --muted: #9aa0aa;
@@ -567,7 +577,9 @@
         btn.classList.toggle('on', on);
         btn.classList.toggle('partial', partial);
         btn.classList.toggle('dim', filtering && !on && !partial);
+        btn.setAttribute('aria-pressed', on ? 'true' : partial ? 'mixed' : 'false');
       });
+      srcAll.setAttribute('aria-pressed', String(!filtering)); // active default when nothing's filtered
     }
     function updateSrcLabel() {
       srcBtn.textContent = selectedCategories.size === 0 ? 'All sources' : `${selectedCategories.size} selected`;
@@ -582,6 +594,11 @@
       const open = srcPanel.hidden;
       srcPanel.hidden = !open;
       srcBtn.setAttribute('aria-expanded', String(open));
+      if (open) srcAll.focus(); // move focus into the popup for keyboard users
+    });
+    // Escape closes the Sources popup and returns focus to its toggle.
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !srcPanel.hidden) { closeSrc(); srcBtn.focus(); }
     });
     srcPanel.addEventListener('change', (e) => {
       const cb = e.target;
