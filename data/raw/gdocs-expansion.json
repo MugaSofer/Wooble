@@ -500,5 +500,35 @@
     "title": "WD Lausanne: Draft",
     "work": "Weaverdice",
     "tier": "semicanon"
+  },
+  {
+    "id": "1Xer5H7RGsIslVepIRoR7to9Gqsi1Foz5uCiWTk2TmLY",
+    "title": "Weaver Dice: Changers",
+    "work": "Weaverdice",
+    "tier": "canon"
+  },
+  {
+    "id": "1EA2fVCDAiSyGxLOT4AjovthduBBetnIugafva9cBpO0",
+    "title": "Weaver Dice: Changers 2.0",
+    "work": "Weaverdice",
+    "tier": "canon"
+  },
+  {
+    "id": "177P6wOpW-TwLQXbC5xdju6EIHhwd6TCZkK26WuiDIrw",
+    "title": "Weaver Dice: Thinkers",
+    "work": "Weaverdice",
+    "tier": "canon"
+  },
+  {
+    "id": "1wFzwramWoLTtsgAOV9VpziStPMKSkBQVnextKTl2KAg",
+    "title": "Weaver Dice: Thinkers 2.0",
+    "work": "Weaverdice",
+    "tier": "canon"
+  },
+  {
+    "id": "1_OO7evm907wyO7ledSL-obxrLvQ6XzpkuTcRqJAhZV4",
+    "title": "Weaver Dice: Tinkers 2.0",
+    "work": "Weaverdice",
+    "tier": "canon"
   }
 ]
