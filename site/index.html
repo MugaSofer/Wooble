@@ -271,20 +271,13 @@
     // Relative path so the bundle resolves under a root (Cloudflare, local) or
     // a subpath (GitHub Pages /Wooble/).
     const pagefindPromise = import('./pagefind/pagefind.js');
-    // A query-less "browse" (empty search + a filter) must read much of the index
-    // to enumerate all matches — several seconds cold, then cached. Warm the index
-    // (via an empty search) as soon as the user shows intent to browse — hovering
-    // or opening Sources — so that one-time load overlaps with them picking a
-    // filter; also gently on idle. This is a head start, not a cure: the real fix
-    // for instant browse is build-time listings (see notes) or a smaller index.
-    // Warm on browse INTENT only (hover/focus Sources) — not on idle — so we don't
-    // impose the full index download on keyword-only visitors who never browse.
     // Eagerly init (wasm + core metadata, ~130KB) during page-load idle time so
     // the first keystroke's search only fetches its own index chunks.
+    // (Query-less browsing never touches Pagefind at all — it's served from the
+    // build-time listing files. Asking Pagefind to enumerate the whole index was
+    // seconds of wasm CPU when cold, and the old hover-of-Sources "warm-up" ran
+    // exactly that on the main thread, stalling any search typed after it.)
     pagefindPromise.then((pf) => pf.init()).catch(() => {});
-    const warmIndex = (() => { let done = false; return () => { if (done) return; done = true; pagefindPromise.then((pf) => pf.search(null)).catch(() => {}); }; })();
-    srcBtn.addEventListener('pointerenter', warmIndex, { once: true });
-    srcBtn.addEventListener('focus', warmIndex, { once: true });
 
     // Filter data from build-time metadata (loads instantly; tiny file).
     let meta = {};
@@ -718,6 +711,42 @@
       return [...best.values()].sort((a, b) => b.score - a.score);
     }
 
+    // Query-less browsing is served from the build-time listing files — static
+    // JSON per work/source bucket, fetched on demand and cached — so it never
+    // asks Pagefind to enumerate the whole index.
+    const listingCache = new Map(); // slug -> Promise<entries>
+    const fetchListing = (slug) => {
+      if (!listingCache.has(slug)) listingCache.set(slug, fetch(`./listings/${slug}.json`).then((r) => r.json()));
+      return listingCache.get(slug);
+    };
+    // Wrap a listing entry as the { meta, url, excerpt } shape card() renders,
+    // so browse and search results share one rendering path. Listing text is
+    // plain (unescaped); esc() here mirrors what Pagefind does to excerpts.
+    const listingResult = (e) => ({ data: () => ({
+      url: e.url,
+      excerpt: esc(e.excerpt || e.answer || ''),
+      content: e.excerpt || '',
+      meta: {
+        title: e.title, url: e.url, work: e.work, type: e.type, date: e.date,
+        source: e.source, subreddit: e.subreddit, tier: e.tier,
+        serial_tags: e.serialTags ? JSON.stringify(e.serialTags) : '',
+        wog_url: e.wogUrl, asked_by: e.askedBy, question: e.question, answer: e.answer,
+      },
+    }) });
+    async function browseResults() {
+      const cats = selectedCategories.size ? [...selectedCategories] : null;
+      const slugs = cats ? [...new Set(cats.flatMap((c) => meta.listings[c] || []))] : (meta.listingSlugs || []);
+      let items = (await Promise.all(slugs.map(fetchListing))).flat();
+      if (cats) { const want = new Set(cats); items = items.filter((e) => e.cats.some((c) => want.has(c))); }
+      const yr = yearRange(); // undated records drop under a year filter, matching Pagefind
+      if (yr) { const ys = new Set(yr); items = items.filter((e) => e.date && ys.has(e.date.slice(0, 4))); }
+      if (sortEl.value) {
+        const dir = sortEl.value === 'asc' ? 1 : -1;
+        items = [...items].sort((a, b) => dir * String(a.date || '').localeCompare(String(b.date || '')));
+      }
+      return items.map(listingResult);
+    }
+
     async function run() {
       const myRun = ++runSeq; // claim the latest slot; anything older must not render
       const query = qEl.value.trim();
@@ -735,8 +764,12 @@
       }
       statusEl.textContent = browsing ? 'Loading…' : 'Searching…';
 
-      const pagefind = await pagefindPromise;
-      const results = await runSearch(pagefind, query, opts);
+      // Browse comes from static listings (instant); only keyword queries hit
+      // Pagefind. (If meta.json failed to load there are no listings — fall
+      // back to Pagefind's slow whole-index enumeration rather than nothing.)
+      const results = browsing && meta.listings
+        ? await browseResults()
+        : await runSearch(await pagefindPromise, query, opts);
       if (myRun !== runSeq) return; // a newer search started while we awaited — abandon this one
       // Adopt the highlight terms only now that we've won, so they always match the
       // results actually rendered (prevents "potato" highlighting a stale query).

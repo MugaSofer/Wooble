@@ -141,12 +141,37 @@ ${body}
 </html>`;
 }
 
+// Trim to a word boundary for the browse listings (mirrors the UI's clip()).
+const clip = (s, n) => { s = String(s ?? ''); return s.length > n ? s.slice(0, n).replace(/\s+\S*$/, '') : s; };
+
+// A browse-listing entry: everything the UI's result card renders, so a
+// query-less browse can be served from static JSON instead of asking Pagefind
+// to enumerate the whole index (which is seconds of wasm CPU when cold).
+function listingEntry(rec, cats) {
+  const type = rec.type || 'Fiction';
+  const e = { title: rec.title, url: rec.url, date: rec.date || '', work: rec.work, type, cats };
+  if (type === 'WoG') {
+    e.source = rec.source ?? 'Comment';
+    if (rec.subreddit) e.subreddit = rec.subreddit;
+    if (rec.serialTags?.length) e.serialTags = rec.serialTags.slice(0, 3);
+    if (rec.wogUrl) e.wogUrl = rec.wogUrl;
+    if (rec.parentAuthor) e.askedBy = rec.parentAuthor;
+    if (rec.question) e.question = clip(rec.question, 240);
+    e.answer = clip(rec.text, 360);
+  } else {
+    if (rec.tier) e.tier = rec.tier;
+    e.excerpt = clip(rec.text, 240);
+  }
+  return e;
+}
+
 async function main() {
   await rm(BUILD_DIR, { recursive: true, force: true });
   // Clear the previous index bundle too: Pagefind hashes fragment filenames by
   // content and doesn't purge old ones, so without this they accumulate across
   // rebuilds and bloat the deploy.
   await rm('site/pagefind', { recursive: true, force: true });
+  await rm('site/listings', { recursive: true, force: true });
 
   // Load every record up front so we can cross-reference before generating.
   const files = (await readdir(CORPUS_DIR)).filter((f) => f.endsWith('.json'));
@@ -256,6 +281,8 @@ async function main() {
   const threadOrigins = new Map(); // origin -> count, within the WoG thread
   let threadTotal = 0;
   let phoCount = 0;               // PHO Sundays in-universe posts
+  const listings = new Map();     // workSlug -> browse-listing entries (served records)
+  const listingCats = new Map();  // category -> Set of workSlugs whose listing carries it
 
   for (const rec of records) {
     const isWoG = (rec.type || 'Fiction') === 'WoG';
@@ -279,6 +306,21 @@ async function main() {
     const slug = rec.id.split(':').slice(1).join(':').replace(/[^a-z0-9-]+/gi, '-');
     await writeFile(join(dir, `${slug}.html`), pageHtml(rec));
     total++;
+    const recCats = categoriesOf(rec);
+    // Bucket WoG separately from its serial (wog-worm vs worm): most WoG shares
+    // its chapter's workSlug, and folding it in would make a fiction-only browse
+    // download megabytes of comments it doesn't show. The reddit pull and the SB
+    // thread get their own buckets too, so no single browse fetches everything.
+    const bucket = !isWoG ? rec.workSlug
+      : String(rec.id).startsWith('wog:reddit:') ? 'wog-reddit'
+      : String(rec.id).startsWith('wog:sb:') ? 'wog-thread'
+      : `wog-${rec.workSlug}`;
+    if (!listings.has(bucket)) listings.set(bucket, []);
+    listings.get(bucket).push(listingEntry(rec, recCats));
+    for (const c of recCats) {
+      if (!listingCats.has(c)) listingCats.set(c, new Set());
+      listingCats.get(c).add(bucket);
+    }
     if (rec.date) years.add(rec.date.slice(0, 4));
     if (isRef) {
       const k = rec.work + '\t' + rec.tier; reference.set(k, (reference.get(k) ?? 0) + 1);
@@ -296,10 +338,9 @@ async function main() {
       const k = rec.subreddit + '\t' + primary; redditSerial.set(k, (redditSerial.get(k) ?? 0) + 1);
       if (!rec.serialTags?.length) servedUntagged.push(rec.id); // served but not yet attributed
     }
-    const cats = categoriesOf(rec);
-    if (cats.includes('WoGThread')) {
+    if (recCats.includes('WoGThread')) {
       threadTotal++;
-      const origin = cats.find((c) => c !== 'WoGThread' && c !== 'RedditWoG' && !c.startsWith('Comment:') && !c.startsWith('Reddit:'));
+      const origin = recCats.find((c) => c !== 'WoGThread' && c !== 'RedditWoG' && !c.startsWith('Comment:') && !c.startsWith('Reddit:'));
       if (origin) threadOrigins.set(origin, (threadOrigins.get(origin) ?? 0) + 1);
     }
   }
@@ -325,9 +366,16 @@ async function main() {
     wogThread: { total: threadTotal, origins: [...threadOrigins].sort((a, b) => ORIGIN_ORDER.indexOf(a[0]) - ORIGIN_ORDER.indexOf(b[0])) },
     years: [...years].sort(),
     items: total,
+    // Browse listings: which listing files carry each category, so the UI can
+    // fetch just the files a source selection needs (and all of them for a
+    // sort-only "everything" browse).
+    listings: Object.fromEntries([...listingCats].map(([c, slugs]) => [c, [...slugs]])),
+    listingSlugs: [...listings.keys()],
   };
   await mkdir('site', { recursive: true });
   await writeFile(join('site', 'meta.json'), JSON.stringify(meta));
+  await mkdir('site/listings', { recursive: true });
+  for (const [slug, entries] of listings) await writeFile(join('site/listings', `${slug}.json`), JSON.stringify(entries));
   await writeFile('data/wog-served-untagged.json', JSON.stringify(servedUntagged));
 
   console.log(`Wrote ${total} pages to ${BUILD_DIR}/ (skipped ${skipped} short, ${droppedNonCanon} non-canon comments + ${droppedFan} fan-made docs archived).`);

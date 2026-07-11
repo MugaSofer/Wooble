@@ -24,6 +24,7 @@ Spacebattles WoG Repository/
 build/
 site/pagefind/
 site/meta.json
+site/listings/
 .wrangler/
 *.log
 .DS_Store
