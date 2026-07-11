@@ -4,14 +4,17 @@
 // so they enter the corpus as Word of God (source 'Page') and are served
 // directly — unlike reader comments, they need no relevance classification.
 //
-// Only the WordPress.com-hosted serials expose /pages over the public API; Ward
-// (self-hosted parahumans.net) blocks it (403) and would need an HTML scrape.
+// The WordPress.com-hosted serials expose /pages over the public API. Ward
+// (self-hosted parahumans.net) blocks its API (403) but serves page HTML, so its
+// F.A.Q. is scraped from the rendered page like the Ward chapter scraper does.
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { parse } from 'node-html-parser';
 import { fetchJSON } from './fetch.js';
 import { cleanContent, decodeEntities } from './clean.js';
 
 const CORPUS_DIR = 'data/corpus';
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'; // parahumans.net 403s non-browser agents
 const words = (s) => String(s || '').trim().split(/\s+/).filter(Boolean).length;
 // Navigation / donation / image pages carry no Word of God.
 const SKIP = /(^|\/)(table-of-contents|support|support-wildbow|gallery|donate)(\/|$)/i;
@@ -47,6 +50,25 @@ for (const w of works.filter((w) => w.api === 'wpcom')) {
   const recs = await ingestWork(w);
   records.push(...recs);
   process.stderr.write(`  ${w.title}: ${recs.length} pages — ${recs.map((r) => r.title.split('— ')[1]).join(', ')}\n`);
+}
+
+// Ward: API blocked, so scrape its HTML pages. Only the F.A.Q. carries WoG (its
+// menu is just F.A.Q. / Table of Contents / Support); About & Cast 403 / absent.
+const WARD_PAGES = [{ slug: 'f-a-q', title: 'F.A.Q.' }];
+for (const wp of WARD_PAGES) {
+  const url = `https://www.parahumans.net/${wp.slug}/`;
+  try {
+    const res = await fetch(url, { headers: { 'User-Agent': UA } });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const entry = parse(await res.text()).querySelector('.entry-content');
+    const text = entry ? cleanContent(entry.innerHTML) : '';
+    if (words(text) < 50) { process.stderr.write(`  Ward ${wp.slug}: too short/empty\n`); continue; }
+    records.push({
+      id: `page:ward:${wp.slug}`, work: 'Ward', workSlug: 'ward', type: 'WoG', source: 'Page',
+      title: `Ward — ${wp.title}`, text, url, date: '', wordCount: words(text),
+    });
+    process.stderr.write(`  Ward: ${wp.title} (${words(text)}w, scraped HTML)\n`);
+  } catch (e) { process.stderr.write(`  Ward ${wp.slug}: ${e.message}\n`); }
 }
 
 await mkdir(CORPUS_DIR, { recursive: true });
