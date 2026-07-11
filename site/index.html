@@ -651,7 +651,42 @@
     yearFromEl.addEventListener('change', run);
     yearToEl.addEventListener('change', run);
     moreBtn.addEventListener('click', () => renderMore());
-    matchesEl.addEventListener('change', () => { if (pending) { resultsEl.innerHTML = ''; shown = 0; renderMore(); } });
+    matchesEl.addEventListener('change', () => { syncHash(); if (pending) { resultsEl.innerHTML = ''; shown = 0; renderMore(); } });
+
+    // Shareable URLs: the whole search state lives in the location hash (which
+    // never leaves the browser), so any search can be bookmarked or sent to
+    // someone. replaceState rather than pushState — typing shouldn't pile up
+    // history entries. Defaults are omitted, so a fresh page has no hash.
+    function syncHash() {
+      const p = new URLSearchParams();
+      const query = qEl.value.trim();
+      if (query) p.set('q', query);
+      for (const c of selectedCategories) p.append('src', c);
+      if (sortEl.value) p.set('sort', sortEl.value);
+      if (yearFromEl.value !== minYear || yearToEl.value !== maxYear) p.set('years', `${yearFromEl.value}-${yearToEl.value}`);
+      if (matchesEl.value !== 'all') p.set('show', matchesEl.value);
+      const h = p.toString();
+      if (('#' + h) === location.hash || (!h && !location.hash)) return;
+      history.replaceState(null, '', h ? '#' + h : location.pathname + location.search);
+    }
+    // Apply a pasted / navigated-to hash: restore controls, then search. An
+    // unknown src just matches nothing; out-of-range years fall back to full.
+    function applyHash() {
+      const p = new URLSearchParams(location.hash.slice(1));
+      qEl.value = p.get('q') ?? '';
+      selectedCategories.clear();
+      for (const c of p.getAll('src')) selectedCategories.add(c);
+      sortEl.value = ['asc', 'desc'].includes(p.get('sort')) ? p.get('sort') : '';
+      const yr = /^(\d{4})-(\d{4})$/.exec(p.get('years') || '');
+      yearFromEl.value = yr && allYears.includes(yr[1]) ? yr[1] : minYear;
+      yearToEl.value = yr && allYears.includes(yr[2]) ? yr[2] : maxYear;
+      matchesEl.value = p.get('show') === 'one' ? 'one' : 'all';
+      refreshChecks();
+      updateSrcLabel();
+      run();
+    }
+    // (Registered at the end of the script: applying a hash can kick off a
+    // browse, which uses consts declared below — they must exist first.)
 
     // Terms to highlight / build "Matches" snippets around: treat a "quoted
     // phrase" as one term, and drop -excluded terms and the OR keyword so we don't
@@ -749,6 +784,7 @@
 
     async function run() {
       const myRun = ++runSeq; // claim the latest slot; anything older must not render
+      syncHash(); // mirror the new state into the URL (no-op when unchanged)
       const query = qEl.value.trim();
       const terms = parseTerms(query);
       const { opts, refined } = buildOptions();
@@ -885,6 +921,10 @@
         <a class="r-url r-wog" href="${esc(m.wog_url)}" target="_blank" rel="noopener">· in WoG repository</a>` : ''}
       </li>`;
     }
+
+    // Restore state from a shared / bookmarked URL, and track manual hash edits.
+    window.addEventListener('hashchange', applyHash);
+    if (location.hash.length > 1) applyHash();
   </script>
 </body>
 </html>
