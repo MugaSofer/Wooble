@@ -21,7 +21,7 @@ try {
   /* no cache yet */
 }
 
-const files = (await readdir(CORPUS)).filter((f) => /^wog-(worm|pact|twig|pale|claw|seek)\.json$/.test(f));
+const files = (await readdir(CORPUS)).filter((f) => /^wog-(worm|pact|twig|pale|claw|seek|ward)\.json$/.test(f));
 const comments = [];
 for (const f of files) {
   for (const r of JSON.parse(await readFile(join(CORPUS, f), 'utf8'))) {
