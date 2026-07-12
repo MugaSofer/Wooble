@@ -10,11 +10,15 @@
 // Sheets export loses formatting via CSV/HTML (the HTML export is a stub), so we
 // pull the XLSX and read the bold runs straight out of the OOXML — bold is the
 // only signal separating Wildbow's canon from fan guesses in the cape list.
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { inflateRawSync } from 'node:zlib';
 
 const UA = 'wooble-fan-archive/0.1 (personal WoG search project)';
 const words = (s) => String(s || '').trim().split(/\s+/).filter(Boolean).length;
+// Each sheet's Drive creation date (from data/gdocs-dates.json), so cape/vial
+// records aren't undated.
+let dates = {};
+try { dates = JSON.parse(await readFile('data/gdocs-dates.json', 'utf8')); } catch { /* not fetched yet */ }
 
 // --- minimal zip reader (Node has no bundled unzip) ---------------------------
 // Walk the central directory, inflate each stored/deflated entry into a buffer.
@@ -105,7 +109,7 @@ const PLIST = '1pgn9rgYutpBqJg1lSBP3NHnq9WK4ToLq9K4ys_I4cRc';
       id: `sheet:plist:${rn}`, work: 'Extras', workSlug: 'extras', type: 'Reference',
       tier: 'canon', setting: 'Parahumans', docTitle: 'Parahuman Classification List',
       title: real ? `${name} (${real})` : name,
-      heading: name, text, url: rowLink(PLIST, rn), date: '', wordCount: words(text),
+      heading: name, text, url: rowLink(PLIST, rn), date: dates[PLIST] || '', wordCount: words(text),
     });
     served++;
   }
@@ -133,7 +137,7 @@ const VIALS = '1g550q_InlHWmMsyYoATYCtnxkqUDWtn_y4KkVynVsA0';
       id: `sheet:vials:${rn}`, work: 'Weaverdice', workSlug: 'weaverdice', type: 'Reference',
       tier: 'canon', docTitle: 'Cauldron Vials',
       title: label ? `${name} — Cauldron vial ${label}` : `${name} — Cauldron vial`,
-      heading: name, text, url: rowLink(VIALS, rn), date: '', wordCount: words(text),
+      heading: name, text, url: rowLink(VIALS, rn), date: dates[VIALS] || '', wordCount: words(text),
     });
     served++;
   }
@@ -160,7 +164,7 @@ for (const s of REF_SHEETS) {
   records.push({
     id: `sheet:ref:${s.id.slice(0, 8)}`, work: 'Weaverdice', workSlug: 'weaverdice', type: 'Reference',
     tier: s.tier, docTitle: s.title, title: s.title, heading: s.title, text,
-    url: `https://docs.google.com/spreadsheets/d/${s.id}/edit`, date: '', wordCount: words(text),
+    url: `https://docs.google.com/spreadsheets/d/${s.id}/edit`, date: dates[s.id] || '', wordCount: words(text),
   });
   process.stderr.write(`  ref sheet: ${s.title} (${tabs.length} sections, ${s.tier})\n`);
 }

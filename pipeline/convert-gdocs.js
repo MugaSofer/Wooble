@@ -99,6 +99,10 @@ async function main() {
   for (const m of manifest) byId.set(m.id, m);
   for (const e of expansion) byId.set(e.id, e);
   const wanted = [...byId.values()];
+  // Google-doc creation dates (Drive `createdTime`, from data/gdocs-dates.json) —
+  // the HTML export carries no date, so without this reference sections are undated.
+  let dates = {};
+  try { dates = JSON.parse(await readFile('data/gdocs-dates.json', 'utf8')); } catch { /* not fetched yet */ }
   await mkdir(RAW_DIR, { recursive: true });
   const records = [];
   const perTier = {};
@@ -133,7 +137,7 @@ async function main() {
         heading: s.heading,
         text: s.text,
         url: s.anchor ? `${base}#heading=${s.anchor}` : base,
-        date: '',
+        date: dates[doc.id] || '',
         wordCount: words(s.text),
       });
     });

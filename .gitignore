@@ -30,3 +30,5 @@ site/listings/
 .DS_Store
 
 data/wog-served-untagged.json
+data/gdocs-dates-parts/
+data/gdocs-served-ids.json
