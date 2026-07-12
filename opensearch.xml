@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/"
+                       xmlns:moz="http://www.mozilla.org/2006/browser/search/">
+  <ShortName>Wooble</ShortName>
+  <Description>Search across Wildbow's web serials and Word of God.</Description>
+  <InputEncoding>UTF-8</InputEncoding>
+  <!-- State lives in the location hash, so the query goes there; the app's
+       hashchange handler runs the search on load. -->
+  <Url type="text/html" method="get" template="https://mugasofer.github.io/Wooble/#q={searchTerms}"/>
+  <moz:SearchForm>https://mugasofer.github.io/Wooble/</moz:SearchForm>
+</OpenSearchDescription>

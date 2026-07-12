@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wooble — search Wildbow's serials</title>
+  <meta name="description" content="Search across Wildbow's web serials — Worm, Ward, Pact, Pale, Twig, Claw, Seek — plus his Word of God and tabletop material.">
+  <!-- Social unfurls (Discord/Reddit). Static default only — GitHub Pages can't
+       render per-query previews — but far better than a bare URL. -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Wooble — search Wildbow's serials">
+  <meta property="og:description" content="Search Wildbow's web serials, Word of God, and tabletop material — snippets that link out to the source.">
+  <meta property="og:url" content="https://mugasofer.github.io/Wooble/">
+  <meta name="twitter:card" content="summary">
+  <!-- Register Wooble as a browser address-bar search engine. -->
+  <link rel="search" type="application/opensearchdescription+xml" title="Wooble" href="opensearch.xml">
+  <style>
+    :root {
+      --bg: #0f1115; --panel: #171a21; --ink: #e8eaed; --muted: #9aa0aa;
+      --accent: #E95D5D; --accent2: #E9D45D; --line: #2a2f3a;
+      --c-green: #6bcb77; --c-blue: #5d9cec; --c-purple: #b48ce8; --c-wd: #e0894d;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; background: var(--bg); color: var(--ink);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      display: flex; flex-direction: column; align-items: center;
+    }
+    header { text-align: center; margin: 6vh 1rem 1.25rem; }
+    /* Self-hosted Poppins ExtraBold: big & blocky with circular Os, so the
+       yellow/red Os read as the Parahumans/Otherverse circle symbols — and it's
+       identical on every device (system fonts varied, e.g. narrow on Samsung). */
+    @font-face { font-family: 'Poppins'; font-style: normal; font-weight: 900; font-display: swap; src: url(./fonts/poppins-900.woff2) format('woff2'); }
+    .logo { font-size: clamp(3.2rem, 10vw, 5.2rem); font-weight: 900; letter-spacing: -1px; font-family: 'Poppins', "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    .logo .o-red { color: var(--accent); }
+    .logo .o-gold { color: var(--accent2); }
+    .tag { color: var(--muted); margin-top: .25rem; font-size: 1.05rem; }
+    main { width: min(720px, 92vw); padding-bottom: 4rem; }
+    #q {
+      width: 100%; padding: .85rem 1.1rem; font-size: 1.1rem; color: var(--ink);
+      background: var(--panel); border: 1px solid var(--line); border-radius: 999px; outline: none;
+    }
+    #q:focus { border-color: var(--accent); }
+    .controls { position: relative; display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem 1.5rem; margin: .9rem .2rem .2rem; font-size: .85rem; color: var(--muted); }
+    .controls > label { display: inline-flex; align-items: center; gap: .4rem; }
+    /* Phones: tighten control spacing/padding so they pack in more evenly. */
+    @media (max-width: 480px) {
+      .controls { gap: .5rem .8rem; }
+      .controls select, .controls .dd-btn { padding: .2rem .45rem; }
+    }
+    select, .dd-btn {
+      color: var(--ink); background: var(--panel); border: 1px solid var(--line);
+      border-radius: 8px; padding: .25rem .5rem; font: inherit; font-size: .85rem;
+    }
+    select:focus, .dd-btn:focus { outline: none; border-color: var(--accent); }
+    /* Works multi-select: a select-styled button that opens a checkbox popup. */
+    /* Static so the Sources popup anchors to .controls (main width), not the
+       button — keeps it aligned under the search bar and off the viewport edge. */
+    .dropdown { display: inline-block; }
+    .dd-btn { cursor: pointer; }
+    .dd-btn::after { content: "▾"; margin-left: .35rem; opacity: .6; }
+    .dd-btn[aria-expanded="true"] { border-color: var(--accent); }
+    .dd-panel {
+      position: absolute; z-index: 10; top: calc(100% + 5px); left: 0; min-width: 300px;
+      max-height: 300px; overflow: auto; background: var(--panel); border: 1px solid var(--line);
+      border-radius: 10px; padding: .35rem; box-shadow: 0 10px 28px rgba(0, 0, 0, .45);
+    }
+    .dd-panel label {
+      display: flex; align-items: center; gap: .55rem; padding: .32rem .45rem;
+      border-radius: 6px; cursor: pointer; font-size: .88rem; color: var(--ink); user-select: none;
+    }
+    .dd-panel label:hover { background: #1f242e; }
+    .dd-panel input { accent-color: var(--accent); }
+    .dd-panel .count { margin-left: auto; opacity: .5; font-variant-numeric: tabular-nums; }
+    .dd-panel label.dd-parent { font-weight: 600; }
+    .dd-twirl { flex: 0 0 1.1rem; width: 1.1rem; }
+    .dd-caret {
+      background: none; border: none; color: var(--muted); cursor: pointer;
+      padding: 0; line-height: 1; text-align: center;
+    }
+    /* CSS border-triangle rather than a glyph: U+25B6 (▶) has an emoji variant
+       Android renders as a blue emoji, and glyph sizes vary by device/font. This
+       draws the caret at an exact size everywhere. Tweak the border widths to
+       resize (border-left = length, border-top/bottom = half the height). */
+    .dd-caret::before {
+      content: ''; display: inline-block; width: 0; height: 0; vertical-align: middle;
+      border-top: .34rem solid transparent; border-bottom: .34rem solid transparent;
+      border-left: .5rem solid currentColor; transition: transform .12s;
+    }
+    .dd-caret.open::before { transform: rotate(90deg); }
+    .dd-kids { padding-left: 1.15rem; }
+    .dd-kids[hidden] { display: none; }
+    /* Fiction sources: ONE connected bar of universe groups (a header over its
+       works), led by "Select all". Lives inside the Sources popup, above the Word
+       of God tree. Cells share borders (margin -1px); wraps with a gap when narrow. */
+    .source-bar { display: flex; flex-wrap: wrap; justify-content: center; align-items: stretch; row-gap: .5rem; }
+    .source-bar > * { border: 1px solid var(--line); background: var(--panel); }
+    .source-bar > * + * { margin-left: -1px; }
+    .source-bar > :first-child { border-radius: 9px 0 0 9px; }
+    .source-bar > :last-child { border-radius: 0 9px 9px 0; }
+    .src-group { display: flex; flex-direction: column; flex: 1 1 auto; overflow: hidden; }
+    .src-head {
+      border: none; border-bottom: 1px solid var(--line); background: transparent;
+      color: var(--muted); font: inherit; font-size: .78rem; font-weight: 600;
+      padding: .3rem .7rem; cursor: pointer; text-align: center;
+    }
+    .src-works { display: flex; flex: 1; }
+    .src-work {
+      flex: 1; border: none; border-left: 1px solid var(--line); background: transparent;
+      color: var(--ink); font: inherit; font-size: .9rem; padding: .4rem .85rem; cursor: pointer;
+      min-width: 3.8rem; text-align: center; white-space: nowrap;
+    }
+    .src-works .src-work:first-child { border-left: none; }
+    .src-all {
+      display: inline-flex; flex: 1 1 auto; align-items: center; justify-content: center;
+      color: var(--ink); font: inherit; font-size: .9rem; padding: 0 1rem; cursor: pointer;
+    }
+    .src-head:hover, .src-work:hover, .src-all:hover { background: #1f242e; }
+    .src-work.on, .src-head.on { background: var(--pc, var(--accent)); color: #14161c; font-weight: 600; }
+    .src-head.partial { color: var(--pc, var(--accent)); }
+    .src-work.dim, .src-head.dim { opacity: .38; }
+    .dd-sources { width: min(50rem, 92vw); }
+    .wog-section { margin-top: .5rem; }
+    .wog-section.dim { opacity: .38; }
+    .dd-item.dim { opacity: .38; }
+    #status { color: var(--muted); font-size: .85rem; margin: 1rem .2rem .4rem; min-height: 1.2em; }
+    .search-hint { color: var(--muted); font-size: .78rem; margin: .4rem .3rem 0; opacity: .85; }
+    .search-hint code { font-size: .95em; background: color-mix(in srgb, var(--muted) 16%, transparent); padding: .05rem .32rem; border-radius: 4px; }
+    #results { list-style: none; margin: 0; padding: 0; }
+    .result { padding: 1rem 0; border-top: 1px solid var(--line); }
+    .r-head { display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap; }
+    .r-title { color: #cdd3ff; font-size: 1.15rem; font-weight: 600; text-decoration: none; }
+    .r-title:hover { text-decoration: underline; }
+    .pill {
+      font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+      padding: .12rem .5rem; border-radius: 999px;
+      color: var(--pc, var(--muted)); background: color-mix(in srgb, var(--pc, var(--muted)) 16%, transparent);
+    }
+    .sub-pill { text-transform: none; letter-spacing: 0; }
+    /* Colour-coding: works by universe + a few WoG sources; everything else grey. */
+    .c-yellow { --pc: var(--accent2); } .c-red { --pc: var(--accent); }
+    .c-green { --pc: var(--c-green); } .c-blue { --pc: var(--c-blue); } .c-purple { --pc: var(--c-purple); } .c-grey { --pc: var(--ink); }
+    /* Weaverdice + provenance-tier badges: canon green, semi-canon amber, fan-made
+       grey, unknown grey w/ dashed outline (reads as "unverified" vs plain fan). */
+    .c-wd { --pc: var(--c-wd); }
+    .serial-pill { --pc: var(--muted); font-style: italic; }
+    .tier-canon { --pc: var(--c-green); } .tier-semicanon { --pc: var(--accent2); }
+    .tier-story { --pc: var(--c-blue); } .tier-sample { --pc: var(--muted); }
+    .tier-draft { --pc: var(--muted); } .tier-fanmade { --pc: var(--muted); }
+    .tier-unknown { --pc: var(--muted); border: 1px dashed color-mix(in srgb, var(--muted) 60%, transparent); }
+    .r-date { color: var(--muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
+    .r-context {
+      color: var(--muted); font-style: italic; font-size: .92rem; line-height: 1.5;
+      margin: .35rem 0 .2rem; padding-left: .7rem; border-left: 2px solid var(--line);
+    }
+    .r-asker { font-style: normal; font-weight: 600; color: #b89a5e; }
+    .r-answer-by { font-weight: 600; color: #7fd1c7; }
+    .r-excerpt { color: var(--ink); margin: .4rem 0 .35rem; line-height: 1.55; }
+    .r-excerpt mark { background: #4a3b12; color: #ffe8a3; padding: 0 .1em; border-radius: 2px; }
+    .r-url { color: var(--muted); font-size: .8rem; text-decoration: none; word-break: break-all; }
+    .r-url:hover { color: var(--accent); }
+    .r-wog { margin-left: .6rem; }
+    #more {
+      display: none; margin: 1.5rem auto 0; padding: .55rem 1.4rem; font: inherit; cursor: pointer;
+      color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
+    }
+    #more:hover { border-color: var(--accent); }
+    footer {
+      color: var(--muted); font-size: .82rem; text-align: center;
+      max-width: 640px; margin: auto 1rem 2rem; line-height: 1.5;
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">W<span class="o-gold">o</span><span class="o-red">o</span>ble</div>
+    <div class="tag">Search across Wildbow's web serials.</div>
+  </header>
+
+  <main>
+    <input id="q" type="search" autocomplete="off" autofocus
+           placeholder="Search Worm, Pact, Twig, Ward, Pale, Claw, Seek…">
+    <div class="search-hint"><code>"exact phrase"</code> · <code>-exclude</code> · <code>a OR b</code></div>
+    <div class="controls">
+      <label>Sources
+        <span class="dropdown">
+          <button type="button" id="srcBtn" class="dd-btn" aria-haspopup="true" aria-expanded="false">All sources</button>
+          <div class="dd-panel dd-sources" id="srcPanel" hidden></div>
+        </span>
+      </label>
+      <label>Sort
+        <select id="sort">
+          <option value="">Best match</option>
+          <option value="desc">Newest first</option>
+          <option value="asc">Oldest first</option>
+        </select>
+      </label>
+	   <label>Years
+        <select id="yearFrom"></select>
+        <span>–</span>
+        <select id="yearTo"></select>
+      </label>
+      <label>Show
+        <select id="matches">
+          <option value="all">All in page</option>
+          <option value="one">Best in page</option>
+        </select>
+      </label>
+    </div>
+    <div id="status"></div>
+    <ol id="results"></ol>
+    <button id="more" type="button">Show more</button>
+  </main>
+
+  <footer>
+    Wooble is an unofficial fan-made quote finder. It shows snippets and links you
+    straight to the source — all stories are © <a href="https://www.patreon.com/Wildbow/about">Wildbow</a>. <br>
+	<a href="https://www.patreon.com/Wildbow/about">Support Wildbow</a> - <a href="https://ko-fi.com/mugasofer">Support This Site</a> - <a href="https://github.com/MugaSofer/Wooble/">GitHub</a>
+  </footer>
+
+  <script type="module">
+    const esc = (s) => String(s ?? '').replace(/[&<>"]/g,
+      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const clip = (s, n) => { s = String(s ?? ''); return s.length > n ? s.slice(0, n).replace(/\s+\S*$/, '') + '…' : s; };
+    // Mark a Pagefind excerpt as a mid-text snippet with leading/trailing … when
+    // it doesn't already start/end at a clean boundary.
+    const snippet = (ex) => {
+      const plain = String(ex).replace(/<[^>]+>/g, '').trim();
+      const lead = /^[A-Z0-9"“'(\[]/.test(plain) ? '' : '…';
+      const tail = /[.!?…"”')\]]$/.test(plain) ? '' : '…';
+      return `${lead}${ex}${tail}`;
+    };
+    // Our own highlighter (for WoG, where we render question/answer from meta
+    // rather than Pagefind's merged excerpt). Escapes text, marks query terms.
+    const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    function highlight(text, terms) {
+      text = String(text ?? '');
+      const valid = terms.filter((t) => t.length >= 2);
+      if (!valid.length) return esc(text);
+      const re = new RegExp(`(${valid.map(escapeRe).join('|')})`, 'gi');
+      let out = '', last = 0, m;
+      while ((m = re.exec(text))) {
+        out += esc(text.slice(last, m.index)) + '<mark>' + esc(m[0]) + '</mark>';
+        last = m.index + m[0].length;
+        if (m.index === re.lastIndex) re.lastIndex++;
+      }
+      return out + esc(text.slice(last));
+    }
+    // A window of `max` chars centred on the first query-term match, highlighted.
+    function snippetAround(text, terms, max) {
+      text = String(text ?? '');
+      if (!terms.length || text.length <= max) return highlight(text.length > max ? clip(text, max) : text, terms);
+      const low = text.toLowerCase();
+      let idx = -1;
+      for (const t of terms) { const i = low.indexOf(t.toLowerCase()); if (i >= 0 && (idx < 0 || i < idx)) idx = i; }
+      if (idx < 0) return highlight(clip(text, max), terms);
+      const start = Math.max(0, idx - 60), end = Math.min(text.length, start + max);
+      return (start > 0 ? '…' : '') + highlight(text.slice(start, end), terms) + (end < text.length ? '…' : '');
+    }
+
+    const qEl = document.getElementById('q');
+    const sortEl = document.getElementById('sort');
+    const yearFromEl = document.getElementById('yearFrom');
+    const yearToEl = document.getElementById('yearTo');
+    const srcBtn = document.getElementById('srcBtn');
+    const srcPanel = document.getElementById('srcPanel');
+    const statusEl = document.getElementById('status');
+    const resultsEl = document.getElementById('results');
+    const moreBtn = document.getElementById('more');
+    const matchesEl = document.getElementById('matches');
+
+    const selectedCategories = new Set();
+    const PAGE = 10;
+    let pending = null;   // current result list awaiting render
+    let shown = 0;
+    let runSeq = 0;       // monotonic search id; only the latest search may mutate state / render
+    let queryTerms = [];  // terms to highlight in WoG question/answer
+
+    // Pagefind loads in the background; it is only awaited when a search runs.
+    // Relative path so the bundle resolves under a root (Cloudflare, local) or
+    // a subpath (GitHub Pages /Wooble/).
+    const pagefindPromise = import('./pagefind/pagefind.js');
+    // Eagerly init (wasm + core metadata, ~130KB) during page-load idle time so
+    // the first keystroke's search only fetches its own index chunks.
+    // (Query-less browsing never touches Pagefind at all — it's served from the
+    // build-time listing files. Asking Pagefind to enumerate the whole index was
+    // seconds of wasm CPU when cold, and the old hover-of-Sources "warm-up" ran
+    // exactly that on the main thread, stalling any search typed after it.)
+    pagefindPromise.then((pf) => pf.init()).catch(() => {});
+
+    // Filter data from build-time metadata (loads instantly; tiny file).
+    let meta = {};
+    try { meta = await (await fetch('./meta.json')).json(); } catch { /* fall back */ }
+    if (!meta.fiction) {
+      const f = await (await pagefindPromise).filters();
+      meta = {
+        fiction: Object.entries(f.category || {}).filter(([k]) => /^(Worm|Pact|Twig|Ward|Pale|Claw|Seek)$/.test(k)),
+        wogComment: [], blogPages: [], pho: 0, wogThread: { total: 0, origins: [] }, years: Object.keys(f.year || {}).sort(),
+      };
+    }
+
+    // Sources model. Fiction → a bar of per-work toggles (grouped by universe);
+    // Word of God → a dropdown (blog comments per-work, Reddit subs, the WoG
+    // Thread group). A node maps to one `category` value; a record can carry
+    // several (a cited blog comment is tagged both its work and "WoGThread"), so
+    // any mix of leaves ORs together in a single Pagefind filter. "WoG Thread
+    // (all)" is itself selectable (the WoGThread tag) and groups the thread's
+    // entries by their original source.
+    const ORIGIN_LABELS = { CitedComment: 'Worm comments', WoGThreadOnly: 'Only in the thread', Reddit: 'Reddit', SufficientVelocity: 'SufficientVelocity', SpaceBattles: 'SpaceBattles', Other: 'Other sites' };
+    const wt = meta.wogThread || { total: 0, origins: [] };
+
+    // Colour-coding by universe (works) + a few WoG sources; default grey. Drives
+    // both the result pills and the fiction-bar highlights (via a --pc CSS var).
+    const CAT_COLOR = {
+      Worm: 'c-yellow', Ward: 'c-yellow', Parahumans: 'c-yellow',
+      Pact: 'c-red', Pale: 'c-red', Otherverse: 'c-red',
+      Twig: 'c-green', Claw: 'c-blue', Seek: 'c-purple', Standalone: 'c-grey',
+      Reddit: 'c-red', SpaceBattles: 'c-blue', SufficientVelocity: 'c-blue',
+    };
+    const catColor = (k) => CAT_COLOR[k] || 'c-grey';
+
+    // Group fiction by Wildbow's universes; Twig / Claw / Seek each stand alone.
+    const UNIVERSES = [
+      { label: 'Parahumans', works: ['Worm', 'Ward'] },
+      { label: 'Otherverse', works: ['Pact', 'Pale'] },
+    ];
+    const fictionMap = new Map(meta.fiction || []);
+    const grouped = new Set();
+    const fictionChildren = [];
+    for (const u of UNIVERSES) {
+      const kids = u.works.filter((w) => fictionMap.has(w))
+        .map((w) => { grouped.add(w); return { label: w, count: fictionMap.get(w), cat: w }; });
+      if (kids.length) fictionChildren.push({ label: u.label, children: kids });
+    }
+    const standalone = (meta.fiction || []).filter(([w]) => !grouped.has(w)).map(([w, c]) => ({ label: w, count: c, cat: w }));
+    if (standalone.length) fictionChildren.push({ label: 'Standalone', children: standalone });
+
+    // Reference collections from build metadata: Weaverdice / PactDice / PRT Quest
+    // / Extras (game & worldbuilding docs) and Drafts (story prose). A single-tier
+    // collection is a leaf (cat "Ref:<work>"); multi-tier ones nest tier children
+    // (cat "Ref:<work>:<tier>").
+    // Tier rows say what they *are*: canon docs are rules & reference, his
+    // semi-canon docs are the campaigns he ran (actual-play, canon-compatible).
+    // Per-collection tier labels: Weaverdice splits into his rules/reference vs
+    // the campaigns he ran; elsewhere the generic tier names apply.
+    const TIER_LABELS = { canon: 'Canon', semicanon: 'Semi-canon', story: 'Stories', sample: 'Samples', draft: 'Drafts', uncertain: 'Uncertain', fanmade: 'Fan-made', unknown: 'Unknown' };
+    const TIER_LABELS_BY_WORK = { Weaverdice: { canon: 'Rules & reference', semicanon: 'Campaigns (semi-canon)' } };
+    const tierLabel = (work, tier) => (TIER_LABELS_BY_WORK[work] || {})[tier] || TIER_LABELS[tier] || tier;
+    const refByWork = new Map();
+    for (const [work, tier, c] of (meta.reference || [])) {
+      if (!refByWork.has(work)) refByWork.set(work, []);
+      refByWork.get(work).push({ label: tierLabel(work, tier), count: c, cat: `Ref:${work}:${tier}` });
+    }
+    const mkRefChild = ([work, tiers]) => tiers.length > 1
+      ? { label: work, children: tiers }
+      : { label: work, count: tiers[0].count, cat: `Ref:${work}` };
+    // Reference collections group into top-level sections: Games (the three
+    // tabletop games), Short Fiction (snippets + drafts — its canon/draft tiers
+    // shown directly), and Extras (misc worldbuilding, tucked under Word of God).
+    const GAME_WORKS = ['Weaverdice', 'PactDice', 'PRT Quest', 'Game Concepts'];
+    const gameChildren = [...refByWork].filter(([w]) => GAME_WORKS.includes(w)).map(mkRefChild);
+    // "Other worldbuilding" (Extras) sub-divides by the serial/setting each doc is
+    // about — a leaf per setting (Parahumans capes, Twig/Ward/Pale art & notes).
+    const extraChildren = (meta.extraSettings || []).map(([setting, count]) => ({ label: setting, count, cat: `Extras:${setting}` }));
+    const gamesNode = gameChildren.length ? { label: 'Games', children: gameChildren } : null;
+    // Short Fiction is a small 2-level tree — category › source — over the record
+    // tiers. Stories is a group ready for more sources; Semi-canon (the bonus
+    // interlude) renders as a plain leaf.
+    const SF_TREE = [
+      { group: 'Stories', sources: [
+        { docs: true, label: 'Otherverse shorts' }, // expands into per-doc leaves (Poke, Pâté)
+        { tier: 'story', label: 'DoTheWriteThing' },
+      ] },
+      { group: 'Drafts', sources: [
+        { tier: 'sample', label: 'Samples' },
+        { tier: 'draft', label: 'Before Worm' },
+        { tier: 'semicanon', label: 'Deleted Chapters' }, // Interlude 19.y — pulled post-publication, still semi-canon
+        { tier: 'dream', label: 'Dream chapters' }, // Pale April Fool's dream chapter
+      ] },
+    ];
+    const sfCount = {};
+    for (const [work, tier, c] of (meta.reference || [])) if (work === 'Short Fiction') sfCount[tier] = c;
+    const sfSource = (s) => {
+      if (s.docs) { // Otherverse shorts → a subgroup of per-doc leaves (Poke, Pâté)
+        const kids = (meta.otherverseShorts || []).map(([title, count]) => ({ label: title, count, cat: `SFdoc:${title}` }));
+        return kids.length ? { label: s.label, children: kids } : null;
+      }
+      return sfCount[s.tier] ? { label: s.label, count: sfCount[s.tier], cat: `Ref:Short Fiction:${s.tier}` } : null;
+    };
+    const sfChildren = SF_TREE.map(({ group, sources }) => {
+      const srcs = sources.map(sfSource).filter(Boolean);
+      return srcs.length ? { label: group, children: srcs } : null;
+    }).filter(Boolean);
+    const shortFicNode = sfChildren.length ? { label: 'Short Fiction', children: sfChildren } : null;
+
+    // Word of God tree: blog comments, Reddit, the SB thread, and his misc
+    // worldbuilding docs grouped as "Other worldbuilding".
+    // Reddit WoG is grouped by what each post is ABOUT (its Haiku-attributed
+    // serial), not which subreddit it was posted in — since r/Parahumans is a
+    // general hub. Serials nest under their universe: Parahumans › Worm/Ward/…,
+    // Otherverse › Pact/Pale/…; Twig/Claw/Seek and Other stand alone.
+    const SERIAL_LABEL = { Worm: 'Worm', Ward: 'Ward', Pact: 'Pact', Twig: 'Twig', Pale: 'Pale', Claw: 'Claw', Seek: 'Seek', Weaverdice: 'Weaverdice', PactDice: 'PactDice', Parahumans: 'General', Otherverse: 'General', Other: 'Other / unclear' };
+    const UNIV_OF = { Worm: 'Parahumans', Ward: 'Parahumans', Parahumans: 'Parahumans', Weaverdice: 'Parahumans', Pact: 'Otherverse', Pale: 'Otherverse', Otherverse: 'Otherverse', PactDice: 'Otherverse' };
+    const UNIV_ORDER = ['Parahumans', 'Otherverse'];
+    const TOK_ORDER = ['Worm', 'Ward', 'Parahumans', 'Weaverdice', 'Pact', 'Pale', 'Otherverse', 'PactDice', 'Twig', 'Claw', 'Seek', 'Other'];
+    const tokCount = {};
+    for (const [, tok, c] of (meta.redditSerial || [])) tokCount[tok] = (tokCount[tok] || 0) + c;
+    const tokLeaf = (tok) => ({ label: SERIAL_LABEL[tok] || tok, count: tokCount[tok], cat: `WoGtag:${tok}` });
+    const redditChildren = () => {
+      const out = [];
+      for (const u of UNIV_ORDER) {
+        const toks = Object.keys(tokCount).filter((t) => UNIV_OF[t] === u).sort((a, b) => TOK_ORDER.indexOf(a) - TOK_ORDER.indexOf(b));
+        if (!toks.length) continue;
+        const kids = toks.map(tokLeaf);
+        out.push(kids.length > 1 ? { label: u, count: toks.reduce((s, t) => s + tokCount[t], 0), children: kids } : kids[0]);
+      }
+      for (const t of ['Twig', 'Claw', 'Seek', 'Other']) if (tokCount[t]) out.push(tokLeaf(t));
+      return out;
+    };
+    const wogNode = {
+      label: 'Word of God',
+      children: [
+        ...((meta.wogComment || []).length
+          ? [{ label: 'Blog comments', children: meta.wogComment.map(([w, c]) => ({ label: w, count: c, cat: `Comment:${w}` })) }]
+          : []),
+        ...((meta.blogPages || []).length
+          ? [{ label: 'FAQ, cast & about', children: meta.blogPages.map(([w, c]) => ({ label: w, count: c, cat: `Page:${w}` })) }]
+          : []),
+        ...((meta.pho || 0) ? [{ label: 'PHO Sundays', count: meta.pho, cat: 'PHO' }] : []),
+        ...((meta.reddit || []).length
+          ? [{
+              label: 'Reddit', cat: 'RedditWoG',
+              count: (meta.reddit || []).reduce((s, [, c]) => s + c, 0),
+              children: redditChildren(),
+            }]
+          : []),
+        ...(wt.total
+          ? [{
+              label: 'SpaceBattles Word of God Thread', cat: 'WoGThread', count: wt.total,
+              children: (wt.origins || []).map(([o, c]) => ({ label: ORIGIN_LABELS[o] || o, count: c, cat: o })),
+            }]
+          : []),
+        ...(extraChildren.length ? [{ label: 'Other worldbuilding', children: extraChildren }] : []),
+      ],
+    };
+
+    const leafCats = (node) => (node.cat ? [node.cat] : node.children.flatMap(leafCats));
+    const nodeCount = (node) => (node.cat ? node.count : node.children.reduce((s, c) => s + nodeCount(c), 0));
+    function renderNode(node, depth) {
+      const cats = esc(leafCats(node).join('|'));
+      const count = nodeCount(node).toLocaleString();
+      // Every row leads with a 1.1rem slot — a caret for groups, an empty spacer
+      // for leaves — so checkboxes line up; nesting indents via .dd-kids padding.
+      if (!node.children) {
+        return `<label class="dd-item"><span class="dd-twirl"></span><input type="checkbox" data-cats="${cats}">${esc(node.label)}<span class="count">${count}</span></label>`;
+      }
+      const collapsed = depth >= 1; // top level open, sub-groups collapsed to keep it short
+      return `<div class="dd-group">` +
+        `<label class="dd-item dd-parent"><button type="button" class="dd-twirl dd-caret${collapsed ? '' : ' open'}"></button>` +
+          `<input type="checkbox" data-cats="${cats}">${esc(node.label)}<span class="count">${count}</span></label>` +
+        `<div class="dd-kids"${collapsed ? ' hidden' : ''}>${node.children.map((c) => renderNode(c, depth + 1)).join('')}</div>` +
+      `</div>`;
+    }
+    // A group header selects that universe's whole footprint across sources — not
+    // just its serials, but their blog comments, and (for the mapped universes)
+    // the matching Reddit WoG + Google Docs. So "Otherverse" grabs Pact/Pale +
+    // their comments + PactDice; "Parahumans" grabs Worm/Ward + comments + all the
+    // Reddit WoG + Weaverdice + PRT Quest. Individual work buttons stay serial-only.
+    const UNIVERSE_REF = { Parahumans: ['Weaverdice', 'PRT Quest', 'Game Concepts'], Otherverse: ['PactDice'] };
+    // Route reddit WoG to a universe by its ATTRIBUTED serial, not its subreddit —
+    // so Pact/Pale WoG posted in r/Parahumans lands in Otherverse, not Parahumans.
+    const UNIVERSE_REDDIT = {
+      Parahumans: ['WoGtag:Worm', 'WoGtag:Ward', 'WoGtag:Parahumans', 'WoGtag:Weaverdice', 'Reddit:whowouldwin', 'Reddit:WormFanfic'],
+      Otherverse: ['WoGtag:Pact', 'WoGtag:Pale', 'WoGtag:Otherverse', 'WoGtag:PactDice'],
+    };
+    const UNIVERSE_XWORKS = { Parahumans: ['Glow-worm'] }; // comment-works beyond the serials
+    // Universe-specific Short Fiction (each SF tier maps to one universe): Worm
+    // deleted chapter + prequels are Parahumans; the Otherverse shorts + Pale
+    // dream chapter are Otherverse.
+    const UNIVERSE_SF = {
+      Parahumans: ['Ref:Short Fiction:semicanon', 'Ref:Short Fiction:draft'],
+      Otherverse: ['Ref:Short Fiction:canon', 'Ref:Short Fiction:dream'],
+    };
+    // Other-worldbuilding settings that belong to each universe (Twig stands alone).
+    const UNIVERSE_EXTRA = {
+      Parahumans: ['Extras:Parahumans', 'Extras:Ward'],
+      Otherverse: ['Extras:Pale'],
+    };
+    function headerCats(g) {
+      const works = g.children.map((c) => c.label);
+      const cats = new Set(g.children.flatMap(leafCats)); // the serials
+      for (const [w] of (meta.wogComment || [])) if (works.includes(w) || (UNIVERSE_XWORKS[g.label] || []).includes(w)) cats.add(`Comment:${w}`);
+      for (const [w] of (meta.blogPages || [])) if (works.includes(w) || (UNIVERSE_XWORKS[g.label] || []).includes(w)) cats.add(`Page:${w}`);
+      if (g.label === 'Parahumans' && (meta.pho || 0)) cats.add('PHO');
+      for (const r of (UNIVERSE_REDDIT[g.label] || [])) cats.add(r);
+      for (const work of (UNIVERSE_REF[g.label] || [])) {
+        const tiers = refByWork.get(work);
+        if (tiers) tiers.length > 1 ? tiers.forEach((t) => cats.add(t.cat)) : cats.add(`Ref:${work}`);
+      }
+      for (const c of (UNIVERSE_SF[g.label] || [])) cats.add(c);
+      for (const c of (UNIVERSE_EXTRA[g.label] || [])) cats.add(c);
+      return [...cats];
+    }
+    // Build the fiction bar: universe groups of work toggles, bookended by
+    // "Select all" and the Word of God dropdown button.
+    const fictionBar = fictionChildren.map((g) =>
+      `<div class="src-group" style="flex-grow:${g.children.length}">` +
+        `<button type="button" class="src-head ${catColor(g.label)}" data-cats="${esc(headerCats(g).join('|'))}">${esc(g.label)}</button>` +
+        `<div class="src-works">${g.children.map((w) =>
+          `<button type="button" class="src-work ${catColor(w.label)}" data-cats="${esc(w.cat)}">${esc(w.label)}</button>`).join('')}</div>` +
+      `</div>`).join('');
+    // The Sources popup: the fiction bar on top, the Word of God tree below.
+    srcPanel.innerHTML =
+      `<div class="source-bar" id="srcBar">` +
+        `<button type="button" class="src-all" id="srcAll">Select all<br>(Default)</button>` +
+        fictionBar +
+      `</div>` +
+      // Collapsible sections under the fiction bar: Short Fiction, Games, then
+      // Word of God (a parent checkbox selecting all WoG; its children — Blog
+      // comments / Reddit / WoG Thread — render collapsed under it).
+      (shortFicNode ? `<div class="wog-section" id="shortFicSection">${renderNode(shortFicNode, 0)}</div>` : '') +
+      (gamesNode ? `<div class="wog-section" id="gamesSection">${renderNode(gamesNode, 0)}</div>` : '') +
+      `<div class="wog-section" id="wogSection">${renderNode(wogNode, 0)}</div>`;
+    const srcBar = document.getElementById('srcBar');
+    const srcAll = document.getElementById('srcAll');
+    const wogSection = document.getElementById('wogSection');
+
+    // Expand/collapse on the caret. It's a <button> nested in the label, so per
+    // spec clicking it does NOT toggle the label's checkbox.
+    srcPanel.addEventListener('click', (e) => {
+      const caret = e.target.closest('.dd-caret');
+      if (!caret) return;
+      e.preventDefault();
+      const kids = caret.closest('.dd-item').nextElementSibling;
+      if (kids) { kids.hidden = !kids.hidden; caret.classList.toggle('open', !kids.hidden); }
+    });
+
+    // Reflect selectedCategories onto every checkbox (checked / indeterminate).
+    // Reflect selectedCategories onto the WoG dropdown checkboxes AND the bar.
+    function refreshChecks() {
+      const filtering = selectedCategories.size > 0;
+      const items = [];
+      const sectionActive = new Map(); // section el -> any of its items selected
+      srcPanel.querySelectorAll('input[type=checkbox]').forEach((cb) => {
+        const cats = cb.dataset.cats ? cb.dataset.cats.split('|') : [];
+        const sel = cats.filter((c) => selectedCategories.has(c)).length;
+        cb.checked = sel > 0 && sel === cats.length;
+        cb.indeterminate = sel > 0 && sel < cats.length;
+        const section = cb.closest('.wog-section');
+        if (sel > 0 && section) sectionActive.set(section, true);
+        items.push({ cb, sel, section });
+      });
+      // Each tree section (WoG, Weaverdice) dims wholesale when filtering excludes
+      // it. When some of it IS selected, dim just the unselected items — an item
+      // counts as included if its own cats are selected, or a covering single-cat
+      // ancestor (Reddit / WoG Thread) is.
+      srcPanel.querySelectorAll('.wog-section').forEach((sec) =>
+        sec.classList.toggle('dim', filtering && !sectionActive.get(sec)));
+      for (const { cb, sel, section } of items) {
+        const label = cb.closest('.dd-item');
+        if (!label) continue;
+        let included = sel > 0;
+        for (let a = label.closest('.dd-kids')?.previousElementSibling; a && !included; a = a.closest('.dd-kids')?.previousElementSibling) {
+          const ac = a.querySelector('input')?.dataset.cats || '';
+          if (ac && !ac.includes('|') && selectedCategories.has(ac)) included = true;
+        }
+        label.classList.toggle('dim', filtering && sectionActive.get(section) && !included);
+      }
+      // Nothing selected = everything (all normal). Once filtering, the picked
+      // works light up and the excluded ones dim.
+      srcBar.querySelectorAll('.src-work, .src-head').forEach((btn) => {
+        const cats = btn.dataset.cats.split('|');
+        const sel = cats.filter((c) => selectedCategories.has(c)).length;
+        const on = sel > 0 && sel === cats.length;
+        const partial = sel > 0 && sel < cats.length;
+        btn.classList.toggle('on', on);
+        btn.classList.toggle('partial', partial);
+        btn.classList.toggle('dim', filtering && !on && !partial);
+        btn.setAttribute('aria-pressed', on ? 'true' : partial ? 'mixed' : 'false');
+      });
+      srcAll.setAttribute('aria-pressed', String(!filtering)); // active default when nothing's filtered
+    }
+    function updateSrcLabel() {
+      srcBtn.textContent = selectedCategories.size === 0 ? 'All sources' : `${selectedCategories.size} selected`;
+    }
+    function closeSrc() {
+      srcPanel.hidden = true;
+      srcBtn.setAttribute('aria-expanded', 'false');
+    }
+
+    srcBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const open = srcPanel.hidden;
+      srcPanel.hidden = !open;
+      srcBtn.setAttribute('aria-expanded', String(open));
+      if (open) srcAll.focus(); // move focus into the popup for keyboard users
+    });
+    // Escape closes the Sources popup and returns focus to its toggle.
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !srcPanel.hidden) { closeSrc(); srcBtn.focus(); }
+    });
+    srcPanel.addEventListener('change', (e) => {
+      const cb = e.target;
+      if (!(cb instanceof HTMLInputElement)) return;
+      (cb.dataset.cats ? cb.dataset.cats.split('|') : []).forEach((c) =>
+        cb.checked ? selectedCategories.add(c) : selectedCategories.delete(c));
+      refreshChecks();
+      updateSrcLabel();
+      run();
+    });
+    // Fiction bar: toggle a single work, a whole universe (its header), or —
+    // via "Select all" — every work at once.
+    srcBar.addEventListener('click', (e) => {
+      const btn = e.target.closest('.src-all, .src-head, .src-work');
+      if (!btn) return;
+      if (btn.classList.contains('src-all')) {
+        selectedCategories.clear(); // reset to "everything"
+      } else {
+        const cats = btn.dataset.cats.split('|');
+        const allOn = cats.every((c) => selectedCategories.has(c));
+        cats.forEach((c) => allOn ? selectedCategories.delete(c) : selectedCategories.add(c));
+      }
+      refreshChecks();
+      updateSrcLabel();
+      run();
+    });
+    document.addEventListener('click', (e) => {
+      if (srcPanel.hidden) return;
+      const path = e.composedPath ? e.composedPath() : [];
+      if (!path.includes(srcPanel) && !path.includes(srcBtn)) closeSrc();
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSrc(); });
+
+    // Year-range selects.
+    const allYears = meta.years || [];
+    const minYear = allYears[0], maxYear = allYears[allYears.length - 1];
+    const yearOpts = allYears.map((y) => `<option value="${y}">${y}</option>`).join('');
+    yearFromEl.innerHTML = yearOpts;
+    yearToEl.innerHTML = yearOpts;
+    yearFromEl.value = minYear;
+    yearToEl.value = maxYear;
+
+    // Build the year-filter list, or null when the full range is selected.
+    function yearRange() {
+      const lo = Math.min(+yearFromEl.value, +yearToEl.value);
+      const hi = Math.max(+yearFromEl.value, +yearToEl.value);
+      if (String(lo) === minYear && String(hi) === maxYear) return null;
+      return allYears.filter((y) => +y >= lo && +y <= hi);
+    }
+
+    function buildOptions() {
+      const filters = {};
+      if (selectedCategories.size) filters.category = { any: [...selectedCategories] };
+      const yr = yearRange();
+      if (yr) filters.year = { any: yr };
+      // `refined` (browse-on-empty) reflects an explicit source/year/sort choice.
+      const refined = Object.keys(filters).length > 0 || !!sortEl.value;
+      const opts = {};
+      if (Object.keys(filters).length) opts.filters = filters;
+      if (sortEl.value) opts.sort = { date: sortEl.value };
+      return { opts, refined };
+    }
+
+    let timer;
+    qEl.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(run, 180); });
+    sortEl.addEventListener('change', run);
+    yearFromEl.addEventListener('change', run);
+    yearToEl.addEventListener('change', run);
+    moreBtn.addEventListener('click', () => renderMore());
+    matchesEl.addEventListener('change', () => { syncHash(); if (pending) { resultsEl.innerHTML = ''; shown = 0; renderMore(); } });
+
+    // Shareable URLs: the whole search state lives in the location hash (which
+    // never leaves the browser), so any search can be bookmarked or sent to
+    // someone. replaceState rather than pushState — typing shouldn't pile up
+    // history entries. Defaults are omitted, so a fresh page has no hash.
+    function syncHash() {
+      const p = new URLSearchParams();
+      const query = qEl.value.trim();
+      if (query) p.set('q', query);
+      for (const c of selectedCategories) p.append('src', c);
+      if (sortEl.value) p.set('sort', sortEl.value);
+      if (yearFromEl.value !== minYear || yearToEl.value !== maxYear) p.set('years', `${yearFromEl.value}-${yearToEl.value}`);
+      if (matchesEl.value !== 'all') p.set('show', matchesEl.value);
+      const h = p.toString();
+      if (('#' + h) === location.hash || (!h && !location.hash)) return;
+      history.replaceState(null, '', h ? '#' + h : location.pathname + location.search);
+    }
+    // Apply a pasted / navigated-to hash: restore controls, then search. An
+    // unknown src just matches nothing; out-of-range years fall back to full.
+    function applyHash() {
+      const p = new URLSearchParams(location.hash.slice(1));
+      qEl.value = p.get('q') ?? '';
+      selectedCategories.clear();
+      for (const c of p.getAll('src')) selectedCategories.add(c);
+      sortEl.value = ['asc', 'desc'].includes(p.get('sort')) ? p.get('sort') : '';
+      const yr = /^(\d{4})-(\d{4})$/.exec(p.get('years') || '');
+      yearFromEl.value = yr && allYears.includes(yr[1]) ? yr[1] : minYear;
+      yearToEl.value = yr && allYears.includes(yr[2]) ? yr[2] : maxYear;
+      matchesEl.value = p.get('show') === 'one' ? 'one' : 'all';
+      refreshChecks();
+      updateSrcLabel();
+      run();
+    }
+    // (Registered at the end of the script: applying a hash can kick off a
+    // browse, which uses consts declared below — they must exist first.)
+
+    // Terms to highlight / build "Matches" snippets around: treat a "quoted
+    // phrase" as one term, and drop -excluded terms and the OR keyword so we don't
+    // highlight a word the user searched to remove (or the operator itself).
+    function parseTerms(query) {
+      const terms = [];
+      const re = /"([^"]*)"|(\S+)/g;
+      let m;
+      while ((m = re.exec(query || ''))) {
+        if (m[1] != null) { const p = m[1].trim(); if (p) terms.push(p); }
+        else if (m[2] !== 'OR' && !m[2].startsWith('-') && m[2].length > 1) terms.push(m[2]);
+      }
+      return terms;
+    }
+
+    // Pagefind natively handles AND + "phrases" but NOT exclusion or OR, so we
+    // layer those on. Split the query on top-level OR (outside quotes) into
+    // branches; search each branch (subtracting -excluded terms by result id);
+    // union the branches, keeping each result's best score.
+    function splitOr(q) {
+      const out = []; let cur = '', inQ = false;
+      for (const t of q.split(/(\s+)/)) {
+        if (!inQ && t === 'OR') { out.push(cur.trim()); cur = ''; continue; }
+        cur += t;
+        if (((t.match(/"/g) || []).length) % 2) inQ = !inQ;
+      }
+      out.push(cur.trim());
+      return out.filter(Boolean);
+    }
+    function parseBranch(branch) {
+      const excludes = [];
+      const positive = branch
+        .replace(/(^|\s)-(?:"([^"]+)"|(\S+))/g, (_, sp, ph, w) => { excludes.push(ph ? `"${ph}"` : w); return sp; })
+        .replace(/\s+/g, ' ').trim();
+      return { positive, excludes };
+    }
+    async function searchBranch(pagefind, branch, opts) {
+      const { positive, excludes } = parseBranch(branch);
+      // The positive search and each exclusion search are independent — run them
+      // concurrently (Pagefind dedupes chunk loads, so this is safe).
+      const [main, ...excluded] = await Promise.all([
+        pagefind.search(positive || null, opts),
+        ...excludes.map((t) => pagefind.search(t, opts)),
+      ]);
+      if (!excluded.length) return main.results;
+      const drop = new Set(excluded.flatMap((x) => x.results.map((r) => r.id)));
+      return main.results.filter((r) => !drop.has(r.id));
+    }
+    async function runSearch(pagefind, query, opts) {
+      const branches = query ? splitOr(query) : [''];
+      if (branches.length <= 1) return searchBranch(pagefind, branches[0] || '', opts);
+      const settled = await Promise.all(branches.map((b) => searchBranch(pagefind, b, opts)));
+      const best = new Map(); // id -> result object, keeping the highest score
+      for (const results of settled) for (const r of results) {
+        const prev = best.get(r.id); if (!prev || r.score > prev.score) best.set(r.id, r);
+      }
+      return [...best.values()].sort((a, b) => b.score - a.score);
+    }
+
+    // Query-less browsing is served from the build-time listing files — static
+    // JSON per work/source bucket, fetched on demand and cached — so it never
+    // asks Pagefind to enumerate the whole index.
+    const listingCache = new Map(); // slug -> Promise<entries>
+    const fetchListing = (slug) => {
+      if (!listingCache.has(slug)) listingCache.set(slug, fetch(`./listings/${slug}.json`).then((r) => r.json()));
+      return listingCache.get(slug);
+    };
+    // Wrap a listing entry as the { meta, url, excerpt } shape card() renders,
+    // so browse and search results share one rendering path. Listing text is
+    // plain (unescaped); esc() here mirrors what Pagefind does to excerpts.
+    const listingResult = (e) => ({ data: () => ({
+      url: e.url,
+      excerpt: esc(e.excerpt || e.answer || ''),
+      content: e.excerpt || '',
+      meta: {
+        title: e.title, url: e.url, work: e.work, type: e.type, date: e.date,
+        source: e.source, subreddit: e.subreddit, tier: e.tier,
+        serial_tags: e.serialTags ? JSON.stringify(e.serialTags) : '',
+        wog_url: e.wogUrl, asked_by: e.askedBy, question: e.question, answer: e.answer,
+      },
+    }) });
+    async function browseResults() {
+      const cats = selectedCategories.size ? [...selectedCategories] : null;
+      const slugs = cats ? [...new Set(cats.flatMap((c) => meta.listings[c] || []))] : (meta.listingSlugs || []);
+      let items = (await Promise.all(slugs.map(fetchListing))).flat();
+      if (cats) { const want = new Set(cats); items = items.filter((e) => e.cats.some((c) => want.has(c))); }
+      const yr = yearRange(); // undated records drop under a year filter, matching Pagefind
+      if (yr) { const ys = new Set(yr); items = items.filter((e) => e.date && ys.has(e.date.slice(0, 4))); }
+      if (sortEl.value) {
+        const dir = sortEl.value === 'asc' ? 1 : -1;
+        items = [...items].sort((a, b) => dir * String(a.date || '').localeCompare(String(b.date || '')));
+      }
+      return items.map(listingResult);
+    }
+
+    async function run() {
+      const myRun = ++runSeq; // claim the latest slot; anything older must not render
+      syncHash(); // mirror the new state into the URL (no-op when unchanged)
+      const query = qEl.value.trim();
+      const terms = parseTerms(query);
+      const { opts, refined } = buildOptions();
+      const browsing = !query && refined;
+
+      if (!query && !browsing) {
+        queryTerms = terms;
+        pending = null; // drop stale results so a "Show" change can't resurrect them
+        resultsEl.innerHTML = '';
+        statusEl.textContent = '';
+        moreBtn.style.display = 'none';
+        return;
+      }
+      statusEl.textContent = browsing ? 'Loading…' : 'Searching…';
+
+      // Browse comes from static listings (instant); only keyword queries hit
+      // Pagefind. (If meta.json failed to load there are no listings — fall
+      // back to Pagefind's slow whole-index enumeration rather than nothing.)
+      const results = browsing && meta.listings
+        ? await browseResults()
+        : await runSearch(await pagefindPromise, query, opts);
+      if (myRun !== runSeq) return; // a newer search started while we awaited — abandon this one
+      // Adopt the highlight terms only now that we've won, so they always match the
+      // results actually rendered (prevents "potato" highlighting a stale query).
+      queryTerms = terms;
+      pending = results;
+      shown = 0;
+      resultsEl.innerHTML = '';
+
+      const total = pending.length;
+      // "chapters" only when browsing fiction works alone; any WoG/reference
+      // selection (or no filter at all) mixes record types, so say "results".
+      const fictionOnly = browsing && selectedCategories.size > 0 && [...selectedCategories].every((c) => fictionMap.has(c));
+      statusEl.textContent = total === 0
+        ? 'No results.'
+        : `${total.toLocaleString()} ${fictionOnly ? 'chapter' : 'result'}${total === 1 ? '' : 's'}`;
+      await renderMore(myRun);
+    }
+
+    async function renderMore(myRun) {
+      const slice = pending.slice(shown, shown + PAGE);
+      const data = await Promise.all(slice.map((r) => r.data()));
+      if (myRun != null && myRun !== runSeq) return; // superseded while fragments loaded
+      resultsEl.insertAdjacentHTML('beforeend', data.map(card).join(''));
+      shown += slice.length;
+      moreBtn.style.display = shown < pending.length ? 'block' : 'none';
+    }
+
+    // Build multiple snippets from a full text: a window around each distinct
+    // query-term hit (nearby hits merged), for the "all matches in each result" mode.
+    function multiSnippets(text, terms, { max = 6, radius = 130 } = {}) {
+      text = String(text ?? '');
+      const valid = terms.filter((t) => t.length >= 2);
+      if (!valid.length || !text) return [];
+      const low = text.toLowerCase();
+      const hits = [];
+      for (const t of valid) {
+        const tl = t.toLowerCase();
+        for (let i = low.indexOf(tl); i >= 0; i = low.indexOf(tl, i + tl.length)) hits.push(i);
+      }
+      if (!hits.length) return [];
+      hits.sort((a, b) => a - b);
+      const centers = [];
+      for (const h of hits) if (!centers.length || h - centers[centers.length - 1] > radius) centers.push(h);
+      return centers.slice(0, max).map((pos) => {
+        const lo = Math.max(0, pos - Math.floor(radius / 2));
+        const hi = Math.min(text.length, pos + Math.floor(radius * 1.6));
+        let s = text.slice(lo, hi);
+        if (lo > 0) s = s.replace(/^\S*\s+/, '');
+        if (hi < text.length) s = s.replace(/\s+\S*$/, '');
+        return (lo > 0 ? '…' : '') + highlight(s, valid) + (hi < text.length ? '…' : '');
+      });
+    }
+
+    function card(d) {
+      const m = d.meta || {};
+      const url = m.url || d.url;
+      const title = m.title || 'Chapter';
+      const work = m.work || '';
+      const date = m.date || '';
+      const isWoG = m.type === 'WoG';
+      const isRef = m.type === 'Reference';
+      // Fiction wears its work pill; WoG shows only its source — never a work
+      // (it isn't part of a serial). Reddit WoG names its subreddit ("/r/weaverdice").
+      // Weaverdice reference shows a "Weaverdice" pill + its provenance tier badge.
+      const isReddit = isWoG && m.source === 'Reddit' && m.subreddit;
+      const src = m.source || 'Comment';
+      // Attributed serial(s) for mixed-sub reddit WoG — a soft "probably X · N%" pill.
+      const stags = m.serial_tags ? (() => { try { return JSON.parse(m.serial_tags); } catch { return null; } })() : null;
+      const serialPill = stags && stags.length
+        ? `<span class="pill serial-pill">${stags[0].pct >= 80 && stags.length === 1 ? '' : 'probably '}${stags.slice(0, 2).map((t) => esc(String(t.serial).replace('-universe', ' (general)')) + ' ' + t.pct + '%').join(' · ')}</span>`
+        : '';
+      const workPill = work ? `<span class="pill ${catColor(work)}">${esc(work)}</span>` : '';
+      // Canon is the default (unlabelled); only non-canon tiers wear a badge.
+      const TIER = { semicanon: ['Semi-canon', 'tier-semicanon'], dream: ['Semi-canon', 'tier-semicanon'], story: ['Story', 'tier-story'], sample: ['Sample', 'tier-sample'], draft: ['Draft', 'tier-draft'], uncertain: ['Uncertain', 'tier-unknown'], fanmade: ['Fan-made', 'tier-fanmade'], unknown: ['Unknown', 'tier-unknown'] };
+      const tierPill = TIER[m.tier] ? `<span class="pill ${TIER[m.tier][1]}">${TIER[m.tier][0]}</span>` : '';
+      const REFCOLOR = { Weaverdice: 'c-wd', PactDice: 'c-red', 'PRT Quest': 'c-yellow', 'Short Fiction': 'c-purple', 'Game Concepts': 'c-blue', Extras: 'c-grey' };
+      const pills = isRef
+        ? `<span class="pill ${REFCOLOR[work] || 'c-wd'}">${esc(work || 'Weaverdice')}</span>${tierPill}`
+        : !isWoG
+        ? workPill
+        : isReddit
+          ? `<span class="pill sub-pill ${catColor('Reddit')}">/r/${esc(m.subreddit)}</span>${serialPill}`
+          : src === 'Comment'
+            ? `${workPill}<span class="pill ${catColor(src)}">${esc(src)}</span>`
+            : `<span class="pill ${catColor(src)}">${esc(src)}</span>`;
+      const context = isWoG && m.question
+        ? `<p class="r-context">${m.asked_by ? `<span class="r-asker">${esc(m.asked_by)} said:</span> ` : ''}${snippetAround(m.question, queryTerms, 200)}</p>`
+        : '';
+      // "All in each result" → a snippet per matching passage (fiction from the
+      // full chapter text, WoG from Wildbow's answer); else the single best excerpt.
+      const multi = matchesEl.value === 'all' && queryTerms.length > 0;
+      let excerptHtml;
+      if (isWoG) {
+        const snips = multi ? multiSnippets(m.answer, queryTerms) : [];
+        excerptHtml = snips.length
+          ? snips.map((s, i) => `<p class="r-excerpt">${i === 0 ? '<span class="r-answer-by">Wildbow:</span> ' : ''}${s}</p>`).join('')
+          : `<p class="r-excerpt"><span class="r-answer-by">Wildbow:</span> ${m.answer ? snippetAround(m.answer, queryTerms, 300) : snippet(d.excerpt)}</p>`;
+      } else {
+        const snips = multi ? multiSnippets(d.content, queryTerms) : [];
+        excerptHtml = snips.length
+          ? snips.map((s) => `<p class="r-excerpt">${s}</p>`).join('')
+          : `<p class="r-excerpt">${snippet(d.excerpt)}</p>`;
+      }
+      return `<li class="result">
+        <div class="r-head">
+          <a class="r-title" href="${esc(url)}" target="_blank" rel="noopener">${esc(title)}</a>
+          ${pills}
+          ${date ? `<span class="r-date">${esc(date)}</span>` : ''}
+        </div>
+        ${context}
+        ${excerptHtml}
+        <a class="r-url" href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a>${m.wog_url ? `
+        <a class="r-url r-wog" href="${esc(m.wog_url)}" target="_blank" rel="noopener">· in WoG repository</a>` : ''}
+      </li>`;
+    }
+
+    // Restore state from a shared / bookmarked URL, and track manual hash edits.
+    window.addEventListener('hashchange', applyHash);
+    if (location.hash.length > 1) applyHash();
+  </script>
+</body>
+</html>
