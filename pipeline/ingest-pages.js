@@ -65,7 +65,9 @@ for (const wp of WARD_PAGES) {
     if (words(text) < 50) { process.stderr.write(`  Ward ${wp.slug}: too short/empty\n`); continue; }
     records.push({
       id: `page:ward:${wp.slug}`, work: 'Ward', workSlug: 'ward', type: 'WoG', source: 'Page',
-      title: `Ward — ${wp.title}`, text, url, date: '', wordCount: words(text),
+      // No date in the page (API blocked, HTML has none) — the FAQ went up with the
+      // site, so use Ward's first post, Glow-worm 0.1 (2017-10-21).
+      title: `Ward — ${wp.title}`, text, url, date: '2017-10-21', wordCount: words(text),
     });
     process.stderr.write(`  Ward: ${wp.title} (${words(text)}w, scraped HTML)\n`);
   } catch (e) { process.stderr.write(`  Ward ${wp.slug}: ${e.message}\n`); }

@@ -71,6 +71,24 @@ function postAuthor(node) {
   return '';
 }
 
+// The publish date (YYYY-MM-DD) of the forum post this node sits in — i.e. when
+// the quote was posted to the repository thread. The repository doesn't record
+// when Wildbow originally said each quote, so this is a last-resort date: for a
+// quote Wildbow posted himself it's exact, and for a fan's compiled quote it's
+// the compile date (the best we have). XenForo puts the post time in the header
+// as <time itemprop="datePublished" datetime="…">.
+function postDate(node) {
+  for (let p = node.parentNode; p; p = p.parentNode) {
+    const d = p.getAttribute && p.getAttribute('data-content');
+    if (d && d.startsWith('post-')) {
+      const t = p.querySelector('time[itemprop="datePublished"]') || p.querySelector('time[datetime]');
+      const dt = t && t.getAttribute('datetime');
+      return dt ? dt.slice(0, 10) : '';
+    }
+  }
+  return '';
+}
+
 // The contributor's framing text immediately before a quote (e.g. "Wildbow, on
 // Leet's power:"), stopping at any preceding quote.
 function precedingText(bq) {
@@ -255,7 +273,11 @@ async function main() {
         chapterTitle: '',
         url,
         wogUrl: url === wogPost ? '' : wogPost, // secondary "compiled in" link
-        date: '', // SpaceBattles doesn't expose the original quote's date
+        // Fallback date: when the quote was posted to the repository thread.
+        // Entries that merge into a dated bulk reddit/blog record at build get
+        // that record's authoritative date instead; this covers the rest, which
+        // would otherwise sort to the end of a by-date search as undated.
+        date: postDate(bq),
         parentAuthor: '', // a topic line, not a question from a person
         question: context,
         text,
