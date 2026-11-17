@@ -36,8 +36,9 @@ const TAG_MIN = 40; // pct threshold for a tag to confer filter membership
 // Haiku "process" comments (writing process / authorial intent — "I wanted to
 // avoid that trope", "arc names relate to bugs") aren't lore, so the canon gate
 // drops them, but they're exactly what people search for. Serve the ones Haiku
-// rated at least this WoG-heavy, under their own "Process" filter only (so a
-// per-source filter like "Blog comments › Worm" stays canon-only).
+// rated at least this WoG-heavy. They keep their normal source categories and
+// carry a separate `kind` filter ("process" vs "other" for everything else),
+// which the UI exposes as its own Content axis — orthogonal to Sources.
 const PROCESS_MIN = 50;
 
 // One or more filter `category` values per record. Fiction = its work. WoG = its
@@ -58,7 +59,6 @@ function categoriesOf(rec) {
     return cats;
   }
   if (type !== 'WoG') return [rec.work];
-  if (rec.process) return ['Process'];
   // Serial pages (FAQ / Cast / About) — his authoritative out-of-story text,
   // grouped by serial. Curated, so served directly (no relevance gate).
   if (rec.source === 'Page') return [`Page:${rec.work}`];
@@ -137,6 +137,7 @@ function pageHtml(rec) {
     <span data-pagefind-meta="type">${esc(type)}</span>
     ${categories.map((c) => `<span data-pagefind-filter="category">${esc(c)}</span>`).join('\n    ')}
     ${year ? `<span data-pagefind-filter="year">${esc(year)}</span>` : ''}
+    <span data-pagefind-filter="kind">${rec.process ? 'process' : 'other'}</span>
     <time data-pagefind-meta="date"${rec.date ? ' data-pagefind-sort="date"' : ''}>${esc(rec.date)}</time>
     <a data-pagefind-meta="url[href]" href="${esc(rec.url)}">source</a>
 ${extraMeta}  </div>
@@ -157,6 +158,7 @@ const clip = (s, n) => { s = String(s ?? ''); return s.length > n ? s.slice(0, n
 function listingEntry(rec, cats) {
   const type = rec.type || 'Fiction';
   const e = { title: rec.title, url: rec.url, date: rec.date || '', work: rec.work, type, cats };
+  if (rec.process) e.process = true; // Content axis (see PROCESS_MIN)
   if (type === 'WoG') {
     e.source = rec.source ?? 'Comment';
     if (rec.subreddit) e.subreddit = rec.subreddit;
@@ -338,7 +340,7 @@ async function main() {
       continue;
     }
     if (!isWoG) { fiction.set(rec.work, (fiction.get(rec.work) ?? 0) + 1); continue; }
-    if (rec.process) { processCount++; continue; } // own bucket; not in the per-source counts
+    if (rec.process) processCount++;
     if (rec.source === 'PHO') phoCount++;
     if (rec.source === 'Page') blogPages.set(rec.work, (blogPages.get(rec.work) ?? 0) + 1);
     if (rec.source === 'Comment') wogComment.set(rec.work, (wogComment.get(rec.work) ?? 0) + 1);
