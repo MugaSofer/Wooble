@@ -122,6 +122,10 @@
     .dd-sources { width: min(50rem, 92vw); }
     .wog-section { margin-top: .5rem; }
     .wog-section.dim { opacity: .38; }
+    /* Content axis: its own row under the source tree — it narrows whatever
+       sources are picked rather than adding a source of its own. */
+    .content-row { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem 1.2rem; margin-top: .7rem; padding-top: .6rem; border-top: 1px solid var(--line); font-size: .85rem; color: var(--muted); }
+    .content-row label { display: inline-flex; align-items: center; gap: .35rem; color: var(--ink); cursor: pointer; }
     .dd-item.dim { opacity: .38; }
     #status { color: var(--muted); font-size: .85rem; margin: 1rem .2rem .4rem; min-height: 1.2em; }
     .search-hint { color: var(--muted); font-size: .78rem; margin: .4rem .3rem 0; opacity: .85; }
@@ -201,13 +205,6 @@
         <span>–</span>
         <select id="yearTo"></select>
       </label>
-      <label title="Wildbow's comments on his writing process and intent, as opposed to lore">Content
-        <select id="content">
-          <option value="">All</option>
-          <option value="lore">Lore only</option>
-          <option value="process">Process only</option>
-        </select>
-      </label>
       <label>Show
         <select id="matches">
           <option value="all">All in page</option>
@@ -278,7 +275,8 @@
     const matchesEl = document.getElementById('matches');
     // Content axis, orthogonal to Sources: '' = all, 'lore' = hide Wildbow's
     // writing-process comments, 'process' = only those (pages carry kind=process|other).
-    const contentEl = document.getElementById('content');
+    // Lives as a checkbox row in the Sources panel.
+    let contentMode = '';
     const KIND_OF = { lore: 'other', process: 'process' };
 
     const selectedCategories = new Set();
@@ -532,7 +530,10 @@
       // comments / Reddit / WoG Thread — render collapsed under it).
       (shortFicNode ? `<div class="wog-section" id="shortFicSection">${renderNode(shortFicNode, 0)}</div>` : '') +
       (gamesNode ? `<div class="wog-section" id="gamesSection">${renderNode(gamesNode, 0)}</div>` : '') +
-      `<div class="wog-section" id="wogSection">${renderNode(wogNode, 0)}</div>`;
+      `<div class="wog-section" id="wogSection">${renderNode(wogNode, 0)}</div>` +
+      `<div class="content-row" title="Wildbow's comments on his writing process and intent, as opposed to lore">Content:` +
+        `<label><input type="checkbox" data-kind="lore" checked>Lore</label>` +
+        `<label><input type="checkbox" data-kind="process" checked>Writing &amp; process</label></div>`;
     const srcBar = document.getElementById('srcBar');
     const srcAll = document.getElementById('srcAll');
     const wogSection = document.getElementById('wogSection');
@@ -553,7 +554,8 @@
       const filtering = selectedCategories.size > 0;
       const items = [];
       const sectionActive = new Map(); // section el -> any of its items selected
-      srcPanel.querySelectorAll('input[type=checkbox]').forEach((cb) => {
+      srcPanel.querySelectorAll('input[data-kind]').forEach((cb) => { cb.checked = contentMode !== (cb.dataset.kind === 'lore' ? 'process' : 'lore'); });
+      srcPanel.querySelectorAll('input[type=checkbox][data-cats]').forEach((cb) => {
         const cats = cb.dataset.cats ? cb.dataset.cats.split('|') : [];
         const sel = cats.filter((c) => selectedCategories.has(c)).length;
         cb.checked = sel > 0 && sel === cats.length;
@@ -614,6 +616,14 @@
     srcPanel.addEventListener('change', (e) => {
       const cb = e.target;
       if (!(cb instanceof HTMLInputElement)) return;
+      if (cb.dataset.kind) {
+        // Both ticked = everything; unticking one keeps only the other. Unticking
+        // the last would show nothing, so it flips to the other kind instead.
+        const other = cb.dataset.kind === 'lore' ? 'process' : 'lore';
+        contentMode = cb.checked ? '' : other;
+        refreshChecks(); updateSrcLabel(); run();
+        return;
+      }
       (cb.dataset.cats ? cb.dataset.cats.split('|') : []).forEach((c) =>
         cb.checked ? selectedCategories.add(c) : selectedCategories.delete(c));
       refreshChecks();
@@ -627,6 +637,7 @@
       if (!btn) return;
       if (btn.classList.contains('src-all')) {
         selectedCategories.clear(); // reset to "everything"
+        contentMode = '';
       } else {
         const cats = btn.dataset.cats.split('|');
         const allOn = cats.every((c) => selectedCategories.has(c));
@@ -665,7 +676,7 @@
       if (selectedCategories.size) filters.category = { any: [...selectedCategories] };
       const yr = yearRange();
       if (yr) filters.year = { any: yr };
-      if (KIND_OF[contentEl.value]) filters.kind = { any: [KIND_OF[contentEl.value]] };
+      if (KIND_OF[contentMode]) filters.kind = { any: [KIND_OF[contentMode]] };
       // `refined` (browse-on-empty) reflects an explicit source/year/sort choice.
       const refined = Object.keys(filters).length > 0 || !!sortEl.value;
       const opts = {};
@@ -679,7 +690,6 @@
     sortEl.addEventListener('change', run);
     yearFromEl.addEventListener('change', run);
     yearToEl.addEventListener('change', run);
-    contentEl.addEventListener('change', run);
     moreBtn.addEventListener('click', () => renderMore());
     matchesEl.addEventListener('change', () => { syncHash(); if (pending) { resultsEl.innerHTML = ''; shown = 0; renderMore(); } });
 
@@ -695,7 +705,7 @@
       if (sortEl.value) p.set('sort', sortEl.value);
       if (yearFromEl.value !== minYear || yearToEl.value !== maxYear) p.set('years', `${yearFromEl.value}-${yearToEl.value}`);
       if (matchesEl.value !== 'all') p.set('show', matchesEl.value);
-      if (contentEl.value) p.set('content', contentEl.value);
+      if (contentMode) p.set('content', contentMode);
       const h = p.toString();
       if (('#' + h) === location.hash || (!h && !location.hash)) return;
       history.replaceState(null, '', h ? '#' + h : location.pathname + location.search);
@@ -712,7 +722,7 @@
       yearFromEl.value = yr && allYears.includes(yr[1]) ? yr[1] : minYear;
       yearToEl.value = yr && allYears.includes(yr[2]) ? yr[2] : maxYear;
       matchesEl.value = p.get('show') === 'one' ? 'one' : 'all';
-      contentEl.value = KIND_OF[p.get('content')] ? p.get('content') : '';
+      contentMode = KIND_OF[p.get('content')] ? p.get('content') : '';
       refreshChecks();
       updateSrcLabel();
       run();
@@ -807,7 +817,7 @@
       if (cats) { const want = new Set(cats); items = items.filter((e) => e.cats.some((c) => want.has(c))); }
       const yr = yearRange(); // undated records drop under a year filter, matching Pagefind
       if (yr) { const ys = new Set(yr); items = items.filter((e) => e.date && ys.has(e.date.slice(0, 4))); }
-      if (contentEl.value) { const want = contentEl.value === 'process'; items = items.filter((e) => !!e.process === want); }
+      if (contentMode) { const want = contentMode === 'process'; items = items.filter((e) => !!e.process === want); }
       if (sortEl.value) {
         const dir = sortEl.value === 'asc' ? 1 : -1;
         items = [...items].sort((a, b) => dir * String(a.date || '').localeCompare(String(b.date || '')));
@@ -854,6 +864,8 @@
       statusEl.textContent = total === 0
         ? 'No results.'
         : `${total.toLocaleString()} ${fictionOnly ? 'chapter' : 'result'}${total === 1 ? '' : 's'}`;
+      // The Content filter lives inside the Sources panel; say when it's narrowing.
+      if (contentMode) statusEl.textContent += contentMode === 'lore' ? ' · lore only (writing & process hidden)' : ' · writing & process only';
       await renderMore(myRun);
     }
 
