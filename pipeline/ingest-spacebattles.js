@@ -18,7 +18,8 @@ const THREAD = 'https://forums.spacebattles.com/threads/worm-quotes-and-wog-repo
 const UNATTR_CANDIDATES = 'data/sb-unattr-candidates.json'; // full text, git-ignored
 const UNATTR_VERDICTS = 'data/sb-unattr-verdicts.json';     // Haiku verdicts, id -> {wildbow, kind}
 
-const MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+const CHAT_ATTR = /\b(discord|irc)\b/i; // quote attributed to a chat channel, not a person
+const MONTHS =['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
 // "March 3, 2013" → "2013-03-03" ('' if unparseable).
 function isoDate(s) {
   const m = /^(\w+) (\d{1,2}), (\d{4})$/.exec(s.trim());
@@ -256,7 +257,11 @@ async function main() {
       .filter((bq) => !insideQuote(bq))
       .filter((bq) => {
         const attr = bq.getAttribute('data-quote') || '';
-        return blank ? !attr : /wildbow/i.test(attr);
+        if (blank) return !attr;
+        // Chat logs are attributed to the channel ("Discord", "Parahumans IRC"),
+        // not a speaker; keep those where Wildbow takes part.
+        // "Wildblow": a contributor's typo that otherwise drops the quote.
+        return /wildb?l?ow/i.test(attr) || (CHAT_ATTR.test(attr) && /wildbow/i.test(bq.text));
       });
 
     for (const bq of quotes) {
@@ -341,6 +346,46 @@ async function main() {
         date: origDate || postDate(bq),
         parentAuthor: '', // a topic line, not a question from a person
         question,
+        text,
+        wordCount: text.split(/\s+/).length,
+      });
+    }
+  }
+
+  // Wildbow's own posts in the thread: early on he answered questions there
+  // directly, as plain post text rather than quotes, which the quote scan above
+  // never sees. Take the post body minus any quotes (those were handled above).
+  const seenPosts = new Set();
+  for (const file of files) {
+    const root = parse(await readFile(join(SRC_DIR, file), 'utf8'));
+    for (const art of root.querySelectorAll('article[data-author]')) {
+      if (!/^wildbow$/i.test(art.getAttribute('data-author') || '')) continue;
+      const wrap = art.querySelector('.bbWrapper');
+      if (!wrap) continue;
+      const pid = (art.getAttribute('data-content') || '').replace(/^post-/, '');
+      if (!pid || seenPosts.has(pid)) continue;
+      seenPosts.add(pid);
+      const body = parse(wrap.innerHTML);
+      body.querySelectorAll('blockquote').forEach((n) => n.remove());
+      const text = htmlToText(body.innerHTML).replace(/\s+/g, ' ').trim();
+      if (text.length < 40) continue;
+      const key = text.slice(0, 120);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const t = art.querySelector('time[itemprop="datePublished"]') || art.querySelector('time[datetime]');
+      records.push({
+        id: `wog:sb:${createHash('sha1').update(key).digest('hex').slice(0, 12)}`,
+        type: 'WoG',
+        source: 'SpaceBattles',
+        work: 'Worm',
+        workSlug: 'worm',
+        title: 'WoG · Wildbow in the repository thread',
+        chapterTitle: '',
+        url: `${THREAD}/post-${pid}`,
+        wogUrl: '',
+        date: t ? (t.getAttribute('datetime') || '').slice(0, 10) : '',
+        parentAuthor: '',
+        question: '',
         text,
         wordCount: text.split(/\s+/).length,
       });
