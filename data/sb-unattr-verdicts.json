@@ -1,0 +1,545 @@
+{
+ "wog:sb:012de629d221": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:022c7f4421d7": {
+  "wildbow": true,
+  "kind": "chatlog"
+ },
+ "wog:sb:04b12a99d491": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:0514e7ba0e59": {
+  "wildbow": true,
+  "kind": "email"
+ },
+ "wog:sb:05932e211ae6": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:05959abab2f1": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:061a7d7806e3": {
+  "wildbow": true,
+  "kind": "wiki"
+ },
+ "wog:sb:0ee8fbc95345": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:11d22519a8e4": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:122d7dbd4800": {
+  "wildbow": false,
+  "kind": "chatlog"
+ },
+ "wog:sb:13de49ae763a": {
+  "wildbow": true,
+  "kind": "chatlog"
+ },
+ "wog:sb:149f1bcd4968": {
+  "wildbow": true,
+  "kind": "chatlog"
+ },
+ "wog:sb:189dcebcf0a6": {
+  "wildbow": true,
+  "kind": "chatlog"
+ },
+ "wog:sb:192b57af6c4a": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:1a342fd6e4fd": {
+  "wildbow": true,
+  "kind": "chatlog"
+ },
+ "wog:sb:1db54c24a59c": {
+  "wildbow": true,
+  "kind": "chatlog"
+ },
+ "wog:sb:1edf63fdf68a": {
+  "wildbow": true,
+  "kind": "chatlog"
+ },
+ "wog:sb:21b4f16db85f": {
+  "wildbow": false,
+  "kind": "fan"
+ },
+ "wog:sb:225638df320a": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:23a94fed5535": {
+  "wildbow": true,
+  "kind": "chatlog"
+ },
+ "wog:sb:2650b16cbd54": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:26abe7c88241": {
+  "wildbow": true,
+  "kind": "wiki"
+ },
+ "wog:sb:28012ce70eb6": {
+  "wildbow": false,
+  "kind": "other"
+ },
+ "wog:sb:2a23c08f24bb": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:2ade17ded8db": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:2df280ddc7b3": {
+  "wildbow": true,
+  "kind": "chatlog"
+ },
+ "wog:sb:2fd7e3e52cd4": {
+  "wildbow": true,
+  "kind": "wiki"
+ },
+ "wog:sb:3483647a08c0": {
+  "wildbow": true,
+  "kind": "chatlog"
+ },
+ "wog:sb:353b54bce05c": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:357a44bb2db5": {
+  "wildbow": true,
+  "kind": "chatlog"
+ },
+ "wog:sb:35ec28782091": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:37711ac782b9": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:386f5e7ba149": {
+  "wildbow": false,
+  "kind": "fan"
+ },
+ "wog:sb:39359eda9b42": {
+  "wildbow": false,
+  "kind": "fan"
+ },
+ "wog:sb:39ec063662f2": {
+  "wildbow": true,
+  "kind": "chatlog"
+ },
+ "wog:sb:3d98fa80da0c": {
+  "wildbow": false,
+  "kind": "fan"
+ },
+ "wog:sb:3e5de45e5eba": {
+  "wildbow": true,
+  "kind": "chatlog"
+ },
+ "wog:sb:3ec194a2dd11": {
+  "wildbow": true,
+  "kind": "chatlog"
+ },
+ "wog:sb:416da7d9872a": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:429d12f554db": {
+  "wildbow": false,
+  "kind": "fan"
+ },
+ "wog:sb:48460749d4a8": {
+  "wildbow": false,
+  "kind": "fan"
+ },
+ "wog:sb:488d82ca826f": {
+  "wildbow": false,
+  "kind": "fan"
+ },
+ "wog:sb:4992485ae565": {
+  "wildbow": false,
+  "kind": "fan"
+ },
+ "wog:sb:4a333ca0952a": {
+  "wildbow": true,
+  "kind": "chatlog"
+ },
+ "wog:sb:4d2fad6dee41": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:501d2c6adfca": {
+  "wildbow": false,
+  "kind": "fan"
+ },
+ "wog:sb:5198575cfac0": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:51ccb47e3293": {
+  "wildbow": false,
+  "kind": "fan"
+ },
+ "wog:sb:52fd13aca753": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:534d374a64df": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:5352d6010e79": {
+  "wildbow": false,
+  "kind": "story"
+ },
+ "wog:sb:5820333b2198": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:5f92dfafb2ea": {
+  "wildbow": false,
+  "kind": "fan"
+ },
+ "wog:sb:5f99e24622cb": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:6035243dab2f": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:6188ed248d57": {
+  "wildbow": false,
+  "kind": "fan"
+ },
+ "wog:sb:63d8aca67a1c": {
+  "wildbow": true,
+  "kind": "chatlog"
+ },
+ "wog:sb:66c8b2b9b82c": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:6754342fa651": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:69cbf173580f": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:6f34b90110a2": {
+  "wildbow": true,
+  "kind": "chatlog"
+ },
+ "wog:sb:701cecaac3f2": {
+  "wildbow": true,
+  "kind": "chatlog"
+ },
+ "wog:sb:73e568494b9c": {
+  "wildbow": false,
+  "kind": "fan"
+ },
+ "wog:sb:7402b91acd33": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:74d35fb288d1": {
+  "wildbow": false,
+  "kind": "fan"
+ },
+ "wog:sb:75364351bd8c": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:7ba12950d7e4": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:7d55e3fdea86": {
+  "wildbow": false,
+  "kind": "fan"
+ },
+ "wog:sb:7f7317b689ef": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:819eb9d7c5f7": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:825af58d2687": {
+  "wildbow": false,
+  "kind": "fan"
+ },
+ "wog:sb:86096e35eb3b": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:88b1cb94a263": {
+  "wildbow": false,
+  "kind": "fan"
+ },
+ "wog:sb:8d0fc5c0e7b4": {
+  "wildbow": true,
+  "kind": "chatlog"
+ },
+ "wog:sb:8f3d1e82b281": {
+  "wildbow": false,
+  "kind": "fan"
+ },
+ "wog:sb:92257c4f183c": {
+  "wildbow": true,
+  "kind": "answer",
+  "swap": true
+ },
+ "wog:sb:963f2fb26a5d": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:977a95801f3e": {
+  "wildbow": false,
+  "kind": "fan"
+ },
+ "wog:sb:9836e93abcc0": {
+  "wildbow": false,
+  "kind": "fan"
+ },
+ "wog:sb:98563aa50767": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:9dd0f0d1da2d": {
+  "wildbow": false,
+  "kind": "fan"
+ },
+ "wog:sb:9f9f5c1a028d": {
+  "wildbow": true,
+  "kind": "chatlog"
+ },
+ "wog:sb:a88424eecba8": {
+  "wildbow": false,
+  "kind": "email"
+ },
+ "wog:sb:a8dd211bfac5": {
+  "wildbow": false,
+  "kind": "fan"
+ },
+ "wog:sb:a9d10edf3cb0": {
+  "wildbow": true,
+  "kind": "chatlog"
+ },
+ "wog:sb:aabe26966769": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:ac793587f036": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:ad65cbd14f41": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:aea77d95b961": {
+  "wildbow": true,
+  "kind": "chatlog"
+ },
+ "wog:sb:aeadbfe7d4b7": {
+  "wildbow": false,
+  "kind": "fan"
+ },
+ "wog:sb:afe6fc131008": {
+  "wildbow": false,
+  "kind": "fan"
+ },
+ "wog:sb:b42dfb4964f5": {
+  "wildbow": true,
+  "kind": "answer",
+  "swap": true
+ },
+ "wog:sb:b68e0d125303": {
+  "wildbow": false,
+  "kind": "fan"
+ },
+ "wog:sb:b7672d346097": {
+  "wildbow": false,
+  "kind": "fan"
+ },
+ "wog:sb:be4905debdd0": {
+  "wildbow": true,
+  "kind": "chatlog"
+ },
+ "wog:sb:be9e47b30ac9": {
+  "wildbow": false,
+  "kind": "fan"
+ },
+ "wog:sb:beb0970ee436": {
+  "wildbow": true,
+  "kind": "chatlog"
+ },
+ "wog:sb:bedca0f67ddd": {
+  "wildbow": true,
+  "kind": "wiki"
+ },
+ "wog:sb:c0a74f44d468": {
+  "wildbow": true,
+  "kind": "chatlog"
+ },
+ "wog:sb:c10c8d8d61ec": {
+  "wildbow": true,
+  "kind": "wiki"
+ },
+ "wog:sb:c3558aaa62c0": {
+  "wildbow": true,
+  "kind": "wiki"
+ },
+ "wog:sb:c6a8baa9b444": {
+  "wildbow": false,
+  "kind": "chatlog"
+ },
+ "wog:sb:cc60abbe5666": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:cd13e11a4ac3": {
+  "wildbow": true,
+  "kind": "answer",
+  "swap": true
+ },
+ "wog:sb:ce5610da93e5": {
+  "wildbow": true,
+  "kind": "chatlog"
+ },
+ "wog:sb:ceb1db41cc9b": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:d2beff6ccb2a": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:d2cb527de485": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:d39e22aced7b": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:d879faad9f74": {
+  "wildbow": true,
+  "kind": "chatlog"
+ },
+ "wog:sb:da0b592d3d85": {
+  "wildbow": true,
+  "kind": "wiki"
+ },
+ "wog:sb:dc8bcdf8ce20": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:dd6dcce0131a": {
+  "wildbow": false,
+  "kind": "fan"
+ },
+ "wog:sb:ddbdecd5fa0a": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:df0439fc027b": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:dfe4ac33ecf6": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:e55b7f7fbab2": {
+  "wildbow": true,
+  "kind": "chatlog"
+ },
+ "wog:sb:e59a828fe1b0": {
+  "wildbow": false,
+  "kind": "chatlog"
+ },
+ "wog:sb:ea79133c0b82": {
+  "wildbow": true,
+  "kind": "chatlog"
+ },
+ "wog:sb:eb70aea4c92d": {
+  "wildbow": true,
+  "kind": "wiki"
+ },
+ "wog:sb:ed324b84cfa8": {
+  "wildbow": false,
+  "kind": "fan"
+ },
+ "wog:sb:edf7bb04704e": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:eede1a940f51": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:ef3461e22138": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:f1ab21bf1169": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:f308bd96b615": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:f38365c9e43a": {
+  "wildbow": false,
+  "kind": "fan"
+ },
+ "wog:sb:f3bece37b701": {
+  "wildbow": false,
+  "kind": "fan"
+ },
+ "wog:sb:f3d1b8cee9a6": {
+  "wildbow": true,
+  "kind": "answer"
+ },
+ "wog:sb:f40043d50cbd": {
+  "wildbow": false,
+  "kind": "fan"
+ },
+ "wog:sb:f4f916f2bbb9": {
+  "wildbow": false,
+  "kind": "fan"
+ },
+ "wog:sb:f8b03ce9af22": {
+  "wildbow": true,
+  "kind": "chatlog"
+ },
+ "wog:sb:f99f6cab66c4": {
+  "wildbow": true,
+  "kind": "chatlog"
+ },
+ "wog:sb:ff493f825fce": {
+  "wildbow": true,
+  "kind": "wiki"
+ },
+ "wog:sb:ffb28debdb06": {
+  "wildbow": false,
+  "kind": "fan"
+ }
+}

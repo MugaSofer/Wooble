@@ -15,6 +15,16 @@ import { htmlToText } from './clean.js';
 const SRC_DIR = 'Spacebattles WoG Repository';
 const CORPUS_DIR = 'data/corpus';
 const THREAD = 'https://forums.spacebattles.com/threads/worm-quotes-and-wog-repository.294448';
+const UNATTR_CANDIDATES = 'data/sb-unattr-candidates.json'; // full text, git-ignored
+const UNATTR_VERDICTS = 'data/sb-unattr-verdicts.json';     // Haiku verdicts, id -> {wildbow, kind}
+
+const MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+// "March 3, 2013" → "2013-03-03" ('' if unparseable).
+function isoDate(s) {
+  const m = /^(\w+) (\d{1,2}), (\d{4})$/.exec(s.trim());
+  const mi = m ? MONTHS.indexOf(m[1].toLowerCase()) : -1;
+  return mi < 0 ? '' : `${m[3]}-${String(mi + 1).padStart(2, '0')}-${m[2].padStart(2, '0')}`;
+}
 
 // Label for an *external origin* link (SpaceBattles attributions are handled
 // separately, since the repository is itself hosted on SpaceBattles).
@@ -25,6 +35,7 @@ function sourceLabel(url) {
   if (/formspring/i.test(url)) return 'Formspring';
   if (/docs\.google|drive\.google/i.test(url)) return 'Google Docs';
   if (/myth-weavers/i.test(url)) return 'Myth-Weavers';
+  if (/rpg\.net/i.test(url)) return 'RPG.net';
   return 'Other'; // some other site Wildbow posted on (pastebin, blogspot, etc.)
 }
 
@@ -190,8 +201,14 @@ function sourceLinkFor(bq) {
     if (m.kind === 'text') { pendingText = true; continue; }
     if (m.kind === 'quote') { if (pendingText) break; pendingText = false; }
   }
+  // A forward link after contributor text that leads straight into another
+  // quote is the *next* entry's label + link ("Yet more on X: <link> <quote>"),
+  // not this one's ("<quote> Source: <link>").
+  let sawText = false;
   for (let i = idx + 1; i < ms.length; i++) {
     if (ms[i].kind === 'quote') break;
+    if (ms[i].kind === 'text') { sawText = true; continue; }
+    if (sawText && ms[i + 1]?.kind === 'quote') break;
     if (ms[i].kind === 'deadlink') return '';
     if (ms[i].kind === 'link') return ms[i].href;
   }
@@ -217,23 +234,42 @@ async function main() {
   let threadFixes = {};
   try { threadFixes = JSON.parse(await readFile('data/wog-thread-fixes.json', 'utf8')); } catch { /* none yet */ }
 
+  // Haiku verdicts for blank-attribution quotes (id -> {wildbow, kind}); see
+  // pipeline/sb-unattr-batch.js. Only verdict-approved ones are admitted.
+  let unattrVerdicts = {};
+  try { unattrVerdicts = JSON.parse(await readFile(UNATTR_VERDICTS, 'utf8')); } catch { /* none yet */ }
+
   const seen = new Set();
   const records = [];
+  const candidates = []; // blank-attribution quotes, for classification
 
-  for (const file of files) {
+  // Two passes: Wildbow-attributed quotes, then blank-attribution ones — quotes
+  // pasted from another site (RPG.net, blog comments, chat logs) lose XenForo's
+  // "X said:" tag, so a whole post of Wildbow quotes can carry data-quote="".
+  // Those are only admitted once classified as Wildbow (UNATTR_VERDICTS). The
+  // attributed pass runs first so a blank duplicate never displaces one.
+  for (const blank of [false, true]) for (const file of files) {
     const root = parse(await readFile(join(SRC_DIR, file), 'utf8'));
-    // Collect top-level Wildbow quotes first (before mutating the tree).
+    // Collect top-level quotes first (before mutating the tree).
     const quotes = root
       .querySelectorAll('blockquote.bbCodeBlock--quote')
-      .filter((bq) => /wildbow/i.test(bq.getAttribute('data-quote') || '') && !insideQuote(bq));
+      .filter((bq) => !insideQuote(bq))
+      .filter((bq) => {
+        const attr = bq.getAttribute('data-quote') || '';
+        return blank ? !attr : /wildbow/i.test(attr);
+      });
 
     for (const bq of quotes) {
       const context = precedingText(bq);
       const content = bq.querySelector('.bbCodeBlock-content');
       if (!content) continue;
+      // The quoted question (a nested quote), kept as context for blank-
+      // attribution entries, where the label alone often says little.
+      const nested = content.querySelector('.bbCodeBlock-expandContent blockquote .bbCodeBlock-expandContent');
+      const nestedText = nested ? htmlToText(nested.innerHTML).replace(/\s+/g, ' ').trim() : '';
       // Drop nested quotes and the "Click to expand" UI before reading text.
       content.querySelectorAll('blockquote, .bbCodeBlock-expandLink, .js-expandLink').forEach((n) => n.remove());
-      const text = htmlToText(content.innerHTML)
+      let text = htmlToText(content.innerHTML)
         .replace(/Click to (expand|shrink)\.\.\./g, '')
         .replace(/\s+/g, ' ')
         .trim();
@@ -242,13 +278,37 @@ async function main() {
       const key = text.slice(0, 120);
       if (seen.has(key)) continue; // de-dupe across overlapping saved pages
       seen.add(key);
+      const id = `wog:sb:${createHash('sha1').update(key).digest('hex').slice(0, 12)}`;
+
+      // Original-post date carried in the pasted text, when there is one: a
+      // WordPress comment header ("wildbow on March 3, 2013 at 1:27 PM said:")
+      // or an RPG.net edit stamp ("Last edited by Wildbow; 11-21-2013 at …").
+      let origDate = '';
+      let question = context;
+      if (blank) {
+        // The classifier sees the raw text — those headers are speaker evidence.
+        candidates.push({
+          id, poster: postAuthor(bq), label: context, question: nestedText,
+          source: sourceLinkFor(bq), text,
+        });
+        const verdict = unattrVerdicts[id];
+        if (!verdict?.wildbow) continue;
+        const wp = /^wildbow on (\w+ \d{1,2}, \d{4}) at [\d:]+ [AP]M said:\s*/i.exec(text);
+        if (wp) { origDate = isoDate(wp[1]); text = text.slice(wp[0].length); }
+        const ed = /\s*Last edited by Wildbow; (\d{2})-(\d{2})-(\d{4}) at [\d:]+ [AP]M\.?\s*$/i.exec(text);
+        if (ed) { origDate = `${ed[3]}-${ed[1]}-${ed[2]}`; text = text.slice(0, ed.index); }
+        // Pasted with the question they answer as a nested quote: that's better
+        // context than the contributor's label. A few are inverted (Wildbow's
+        // reply nested inside the fan's post) — `swap` puts them right way up.
+        if (verdict.swap) [text, question] = [nestedText, text];
+        else if (nestedText) question = nestedText;
+      }
 
       const jump = bq.querySelector('.bbCodeBlock-sourceJump');
       const jumpHref = jump ? absolute(jump.getAttribute('href')) : '';
       const origin = sourceLinkFor(bq);
       const pid = postId(bq);
       const wogPost = pid ? `${THREAD}/post-${pid}` : THREAD; // where it's compiled
-      const id = `wog:sb:${createHash('sha1').update(key).digest('hex').slice(0, 12)}`;
 
       // Primary origin: a hand-corrected link (the repository got a few wrong);
       // else a cited external source; else — if Wildbow authored the post — his
@@ -276,10 +336,11 @@ async function main() {
         // Fallback date: when the quote was posted to the repository thread.
         // Entries that merge into a dated bulk reddit/blog record at build get
         // that record's authoritative date instead; this covers the rest, which
-        // would otherwise sort to the end of a by-date search as undated.
-        date: postDate(bq),
+        // would otherwise sort to the end of a by-date search as undated. A date
+        // carried in pasted text (blank-attribution entries) is the real one.
+        date: origDate || postDate(bq),
         parentAuthor: '', // a topic line, not a question from a person
-        question: context,
+        question,
         text,
         wordCount: text.split(/\s+/).length,
       });
@@ -289,6 +350,9 @@ async function main() {
   records.forEach((r, i) => (r.order = i));
   await mkdir(CORPUS_DIR, { recursive: true });
   await writeFile(join(CORPUS_DIR, 'wog-spacebattles.json'), JSON.stringify(records, null, 2));
+  await writeFile(UNATTR_CANDIDATES, JSON.stringify(candidates, null, 2));
+  const admitted = candidates.filter((c) => unattrVerdicts[c.id]?.wildbow).length;
+  console.log(`Blank-attribution quotes: ${candidates.length} candidates, ${admitted} admitted as Wildbow.`);
 
   const bySource = {};
   records.forEach((r) => (bySource[r.source] = (bySource[r.source] || 0) + 1));

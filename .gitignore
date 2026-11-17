@@ -32,3 +32,8 @@ site/listings/
 data/wog-served-untagged.json
 data/gdocs-dates-parts/
 data/gdocs-served-ids.json
+# Blank-attribution SB quotes: commit the verdicts (id -> bool), ignore the
+# full-text candidates and batch intermediates.
+data/sb-unattr-candidates.json
+data/sb-unattr-batches/
+data/sb-unattr-parts/
