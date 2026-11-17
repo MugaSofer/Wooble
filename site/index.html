@@ -532,7 +532,7 @@
       (gamesNode ? `<div class="wog-section" id="gamesSection">${renderNode(gamesNode, 0)}</div>` : '') +
       `<div class="wog-section" id="wogSection">${renderNode(wogNode, 0)}</div>` +
       `<div class="content-row" title="Wildbow's comments on his writing process and intent, as opposed to lore">Content:` +
-        `<label><input type="checkbox" data-kind="lore" checked>Lore</label>` +
+        `<label><input type="checkbox" data-kind="lore" checked>Lore &amp; canon</label>` +
         `<label><input type="checkbox" data-kind="process" checked>Writing &amp; process</label></div>`;
     const srcBar = document.getElementById('srcBar');
     const srcAll = document.getElementById('srcAll');
@@ -865,7 +865,7 @@
         ? 'No results.'
         : `${total.toLocaleString()} ${fictionOnly ? 'chapter' : 'result'}${total === 1 ? '' : 's'}`;
       // The Content filter lives inside the Sources panel; say when it's narrowing.
-      if (contentMode) statusEl.textContent += contentMode === 'lore' ? ' · lore only (writing & process hidden)' : ' · writing & process only';
+      if (contentMode) statusEl.textContent += contentMode === 'lore' ? ' · lore & canon only (writing & process hidden)' : ' · writing & process only';
       await renderMore(myRun);
     }
 
