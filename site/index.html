@@ -428,6 +428,9 @@
           ? [{ label: 'FAQ, cast & about', children: meta.blogPages.map(([w, c]) => ({ label: w, count: c, cat: `Page:${w}` })) }]
           : []),
         ...((meta.pho || 0) ? [{ label: 'PHO Sundays', count: meta.pho, cat: 'PHO' }] : []),
+        // Writing-process / authorial-intent comments (blog + Reddit): not lore,
+        // so kept out of the per-source leaves, but searchable here.
+        ...((meta.process || 0) ? [{ label: 'Writing & process', count: meta.process, cat: 'Process' }] : []),
         ...((meta.reddit || []).length
           ? [{
               label: 'Reddit', cat: 'RedditWoG',

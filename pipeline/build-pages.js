@@ -33,6 +33,12 @@ const esc = (s) =>
 const TAG_TOKEN = { 'Parahumans-universe': 'Parahumans', 'Otherverse-universe': 'Otherverse' };
 const tokenOf = (s) => TAG_TOKEN[s] || s;
 const TAG_MIN = 40; // pct threshold for a tag to confer filter membership
+// Haiku "process" comments (writing process / authorial intent — "I wanted to
+// avoid that trope", "arc names relate to bugs") aren't lore, so the canon gate
+// drops them, but they're exactly what people search for. Serve the ones Haiku
+// rated at least this WoG-heavy, under their own "Process" filter only (so a
+// per-source filter like "Blog comments › Worm" stays canon-only).
+const PROCESS_MIN = 50;
 
 // One or more filter `category` values per record. Fiction = its work. WoG = its
 // source (blog comments kept per-work). Anything cited in the SpaceBattles WoG
@@ -52,6 +58,7 @@ function categoriesOf(rec) {
     return cats;
   }
   if (type !== 'WoG') return [rec.work];
+  if (rec.process) return ['Process'];
   // Serial pages (FAQ / Cast / About) — his authoritative out-of-story text,
   // grouped by serial. Curated, so served directly (no relevance gate).
   if (rec.source === 'Page') return [`Page:${rec.work}`];
@@ -280,7 +287,8 @@ async function main() {
   const servedUntagged = [];      // served reddit ids with no serial tag yet (for a re-attribution pass)
   const threadOrigins = new Map(); // origin -> count, within the WoG thread
   let threadTotal = 0;
-  let phoCount = 0;               // PHO Sundays in-universe posts
+  let processCount = 0;           // served "process" comments (own filter)
+  let phoCount = 0;              // PHO Sundays in-universe posts
   const listings = new Map();     // workSlug -> browse-listing entries (served records)
   const listingCats = new Map();  // category -> Set of workSlugs whose listing carries it
 
@@ -296,7 +304,8 @@ async function main() {
     // noisy sources, so they're filtered to the "canon" tag; everything else
     // Haiku tagged stays in the archives (corpus + wog-scores.json), unserved.
     const haikuGated = rec.source === 'Comment' || (rec.source === 'Reddit' && String(rec.id).startsWith('wog:reddit:'));
-    if (isWoG && haikuGated && !rec.cited && rec.score?.category !== 'canon') { droppedNonCanon++; continue; }
+    if (isWoG && haikuGated && !rec.cited && rec.score?.category === 'process' && rec.score.wog_pct >= PROCESS_MIN) rec.process = true;
+    if (isWoG && haikuGated && !rec.cited && rec.score?.category !== 'canon' && !rec.process) { droppedNonCanon++; continue; }
     // Only Wildbow's own docs are served; community/fan-made reference stays in
     // the archive (corpus file) but isn't indexed. His canon, campaigns, and
     // short-fiction drafts qualify; fan-made / unknown don't.
@@ -329,6 +338,7 @@ async function main() {
       continue;
     }
     if (!isWoG) { fiction.set(rec.work, (fiction.get(rec.work) ?? 0) + 1); continue; }
+    if (rec.process) { processCount++; continue; } // own bucket; not in the per-source counts
     if (rec.source === 'PHO') phoCount++;
     if (rec.source === 'Page') blogPages.set(rec.work, (blogPages.get(rec.work) ?? 0) + 1);
     if (rec.source === 'Comment') wogComment.set(rec.work, (wogComment.get(rec.work) ?? 0) + 1);
@@ -361,6 +371,7 @@ async function main() {
     wogComment: [...wogComment].sort(byWork),
     blogPages: [...blogPages].sort(byWork),
     pho: phoCount,
+    process: processCount,
     reddit: [...redditWoG].sort((a, b) => SUB_ORDER.indexOf(a[0]) - SUB_ORDER.indexOf(b[0])),
     redditSerial: [...redditSerial].map(([k, c]) => { const [s, t] = k.split('\t'); return [s, t, c]; }).sort((a, b) => b[2] - a[2]),
     wogThread: { total: threadTotal, origins: [...threadOrigins].sort((a, b) => ORIGIN_ORDER.indexOf(a[0]) - ORIGIN_ORDER.indexOf(b[0])) },
@@ -379,7 +390,7 @@ async function main() {
   await writeFile('data/wog-served-untagged.json', JSON.stringify(servedUntagged));
 
   console.log(`Wrote ${total} pages to ${BUILD_DIR}/ (skipped ${skipped} short, ${droppedNonCanon} non-canon comments + ${droppedFan} fan-made docs archived).`);
-  console.log(`meta.json: ${meta.fiction.length} works, Reference [${meta.reference.map((r) => r.join(':')).join(', ')}], ${meta.wogComment.length} comment-works, reddit [${meta.reddit.map((r) => r.join(':')).join(', ')}], WoG-thread ${threadTotal} (${meta.wogThread.origins.map((o) => o.join(':')).join(', ')}), years ${meta.years[0]}–${meta.years.at(-1)}.`);
+  console.log(`meta.json: ${meta.fiction.length} works, Reference [${meta.reference.map((r) => r.join(':')).join(', ')}], ${meta.wogComment.length} comment-works, reddit [${meta.reddit.map((r) => r.join(':')).join(', ')}], process ${processCount}, WoG-thread ${threadTotal} (${meta.wogThread.origins.map((o) => o.join(':')).join(', ')}), years ${meta.years[0]}–${meta.years.at(-1)}.`);
 }
 
 main().catch((e) => {
