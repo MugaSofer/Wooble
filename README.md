@@ -78,7 +78,7 @@ pnpm serve             # preview locally
 
 The crawl is rate-limited to one request per second and caches every response under
 `data/raw/`, so re-runs are cheap and kind to the source sites. Corpus and cache files
-are git-ignored — Wooble ships the *index*, not the text.
+are git-ignored — Wooble ships the *index*, not the raw text.
 
 ## Roadmap
 
