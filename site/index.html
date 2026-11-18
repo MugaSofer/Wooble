@@ -765,25 +765,45 @@
         .replace(/\s+/g, ' ').trim();
       return { positive, excludes };
     }
+    // Pagefind matches word stems even inside quotes ("Lung was" also finds "lungs was"), so each result
+    // carries its branch's quoted phrases and renderMore() drops results whose text lacks them literally.
+    const flatText = (t) => String(t ?? '').toLowerCase().replace(/[‘’ʼ`]/g, "'").replace(/[“”]/g, '"').replace(/\s+/g, ' ');
+    function quotedPhrases(q) {
+      const out = []; const re = /"([^"]+)"/g; let m;
+      while ((m = re.exec(q || ''))) { const p = flatText(m[1].trim()); if (p) out.push(p); }
+      return out;
+    }
+    // Results are wrapped (Object.create keeps id/score/data()) rather than modified, so tags never leak
+    // between searches. phraseSets: null = no literal check needed; otherwise a list of phrase lists, one per
+    // OR-branch that found the result; the result passes if any one list is fully present in its text.
+    const wrap = (r, phrases) => Object.assign(Object.create(r), { phraseSets: phrases.length ? [phrases] : null });
     async function searchBranch(pagefind, branch, opts) {
       const { positive, excludes } = parseBranch(branch);
+      const phrases = quotedPhrases(positive);
       // The positive search and each exclusion search are independent — run them
       // concurrently (Pagefind dedupes chunk loads, so this is safe).
       const [main, ...excluded] = await Promise.all([
         pagefind.search(positive || null, opts),
         ...excludes.map((t) => pagefind.search(t, opts)),
       ]);
-      if (!excluded.length) return main.results;
       const drop = new Set(excluded.flatMap((x) => x.results.map((r) => r.id)));
-      return main.results.filter((r) => !drop.has(r.id));
+      return main.results.filter((r) => !drop.has(r.id)).map((r) => wrap(r, phrases));
     }
+    const passesPhrases = (r, d) => !r.phraseSets || r.phraseSets.some((set) => {
+      const text = flatText(d.content); return set.every((p) => text.includes(p));
+    });
     async function runSearch(pagefind, query, opts) {
       const branches = query ? splitOr(query) : [''];
       if (branches.length <= 1) return searchBranch(pagefind, branches[0] || '', opts);
       const settled = await Promise.all(branches.map((b) => searchBranch(pagefind, b, opts)));
-      const best = new Map(); // id -> result object, keeping the highest score
+      const best = new Map(); // id -> wrapped result, keeping the highest score and merging phrase sets
       for (const results of settled) for (const r of results) {
-        const prev = best.get(r.id); if (!prev || r.score > prev.score) best.set(r.id, r);
+        const prev = best.get(r.id);
+        if (!prev) { best.set(r.id, r); continue; }
+        const sets = prev.phraseSets && r.phraseSets ? [...prev.phraseSets, ...r.phraseSets] : null;
+        const keep = r.score > prev.score ? r : prev;
+        keep.phraseSets = sets;
+        best.set(r.id, keep);
       }
       return [...best.values()].sort((a, b) => b.score - a.score);
     }
@@ -866,16 +886,27 @@
         : `${total.toLocaleString()} ${fictionOnly ? 'chapter' : 'result'}${total === 1 ? '' : 's'}`;
       // The Content filter lives inside the Sources panel; say when it's narrowing.
       if (contentMode) statusEl.textContent += contentMode === 'lore' ? ' · lore & canon only (writing & process hidden)' : ' · writing & process only';
+      statusEl.insertAdjacentHTML('beforeend', '<span id="inexactNote"></span>');
       await renderMore(myRun);
     }
 
+    let inexactSkipped = 0;
     async function renderMore(myRun) {
-      const slice = pending.slice(shown, shown + PAGE);
-      const data = await Promise.all(slice.map((r) => r.data()));
-      if (myRun != null && myRun !== runSeq) return; // superseded while fragments loaded
-      resultsEl.insertAdjacentHTML('beforeend', data.map(card).join(''));
-      shown += slice.length;
+      if (shown === 0) inexactSkipped = 0;
+      let added = 0, scanned = 0;
+      // keep fetching until a page is filled, but scan at most ~100 results per click
+      while (added < PAGE && shown < pending.length && scanned < 100) {
+        const slice = pending.slice(shown, shown + PAGE);
+        const data = await Promise.all(slice.map((r) => r.data()));
+        if (myRun != null && myRun !== runSeq) return; // superseded while fragments loaded
+        const keep = data.filter((d, i) => passesPhrases(slice[i], d));
+        inexactSkipped += data.length - keep.length;
+        resultsEl.insertAdjacentHTML('beforeend', keep.map(card).join(''));
+        shown += slice.length; scanned += slice.length; added += keep.length;
+      }
       moreBtn.style.display = shown < pending.length ? 'block' : 'none';
+      const note = document.getElementById('inexactNote');
+      if (note) note.textContent = inexactSkipped ? ` · skipped ${inexactSkipped} that only matched similar words, not your exact quoted phrase` : '';
     }
 
     // Build multiple snippets from a full text: a window around each distinct
