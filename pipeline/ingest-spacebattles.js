@@ -18,6 +18,18 @@ const THREAD = 'https://forums.spacebattles.com/threads/worm-quotes-and-wog-repo
 const UNATTR_CANDIDATES = 'data/sb-unattr-candidates.json'; // full text, git-ignored
 const UNATTR_VERDICTS = 'data/sb-unattr-verdicts.json';     // Haiku verdicts, id -> {wildbow, kind}
 
+// Post HTML → text that keeps line breaks (chat logs are unreadable without them).
+// XenForo writes one break as "<br />" plus a newline, which htmlToText would
+// count twice, turning every line break into a paragraph break.
+const postText = (html) => htmlToText(html.replace(/(<br\s*\/?>)[ \t]*\r?\n/gi, '$1'))
+  .replace(/Click to (expand|shrink)\.\.\./g, '')
+  .replace(/[ \t]+$/gm, '')
+  .replace(/\n{3,}/g, '\n\n')
+  .trim();
+// One-line form. Ids and de-duplication are keyed on (and the classifier sees)
+// this, so it must not change: hand fixes and verdicts are stored by id.
+const flat = (t) => t.replace(/\s+/g, ' ').trim();
+
 const CHAT_ATTR = /\b(discord|irc)\b/i; // quote attributed to a chat channel, not a person
 const MONTHS =['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
 // "March 3, 2013" → "2013-03-03" ('' if unparseable).
@@ -271,16 +283,13 @@ async function main() {
       // The quoted question (a nested quote), kept as context for blank-
       // attribution entries, where the label alone often says little.
       const nested = content.querySelector('.bbCodeBlock-expandContent blockquote .bbCodeBlock-expandContent');
-      const nestedText = nested ? htmlToText(nested.innerHTML).replace(/\s+/g, ' ').trim() : '';
+      const nestedText = nested ? postText(nested.innerHTML) : '';
       // Drop nested quotes and the "Click to expand" UI before reading text.
       content.querySelectorAll('blockquote, .bbCodeBlock-expandLink, .js-expandLink').forEach((n) => n.remove());
-      let text = htmlToText(content.innerHTML)
-        .replace(/Click to (expand|shrink)\.\.\./g, '')
-        .replace(/\s+/g, ' ')
-        .trim();
-      if (text.length < 15) continue;
+      let text = postText(content.innerHTML);
+      if (flat(text).length < 15) continue;
 
-      const key = text.slice(0, 120);
+      const key = flat(text).slice(0, 120);
       if (seen.has(key)) continue; // de-dupe across overlapping saved pages
       seen.add(key);
       const id = `wog:sb:${createHash('sha1').update(key).digest('hex').slice(0, 12)}`;
@@ -293,8 +302,8 @@ async function main() {
       if (blank) {
         // The classifier sees the raw text — those headers are speaker evidence.
         candidates.push({
-          id, poster: postAuthor(bq), label: context, question: nestedText,
-          source: sourceLinkFor(bq), text,
+          id, poster: postAuthor(bq), label: context, question: flat(nestedText),
+          source: sourceLinkFor(bq), text: flat(text),
         });
         const verdict = unattrVerdicts[id];
         if (!verdict?.wildbow) continue;
@@ -367,9 +376,9 @@ async function main() {
       seenPosts.add(pid);
       const body = parse(wrap.innerHTML);
       body.querySelectorAll('blockquote').forEach((n) => n.remove());
-      const text = htmlToText(body.innerHTML).replace(/\s+/g, ' ').trim();
-      if (text.length < 40) continue;
-      const key = text.slice(0, 120);
+      const text = postText(body.innerHTML);
+      if (flat(text).length < 40) continue;
+      const key = flat(text).slice(0, 120);
       if (seen.has(key)) continue;
       seen.add(key);
       const t = art.querySelector('time[itemprop="datePublished"]') || art.querySelector('time[datetime]');
