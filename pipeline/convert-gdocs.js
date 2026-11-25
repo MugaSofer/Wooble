@@ -13,7 +13,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 const RAW_DIR = 'data/raw/gdocs';
-const UA = 'wooble-fan-archive/0.1 (personal WoG search project)';
+const UA = 'fan-archive/0.1';
 const MIN_SECTION_WORDS = 25; // drop pure-parent headings / stubs
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const words = (s) => String(s || '').trim().split(/\s+/).filter(Boolean).length;

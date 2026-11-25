@@ -10,7 +10,7 @@
 //   node pipeline/check-fresh.js
 import { readFile } from 'node:fs/promises';
 
-const UA = { 'User-Agent': 'wooble-fan-archive/0.1 (freshness check)' };
+const UA = { 'User-Agent': 'fan-archive/0.1' };
 const iso = (t) => new Date(t * 1000).toISOString().slice(0, 10);
 const load = async (f) => JSON.parse(await readFile(`data/corpus/${f}`, 'utf8').catch(() => '[]'));
 const maxDate = (recs) => recs.reduce((m, r) => (r.date && r.date > m ? r.date : m), '');

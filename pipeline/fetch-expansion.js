@@ -7,7 +7,7 @@ import { join } from 'node:path';
 
 const RAW = 'data/raw/gdocs';
 const MISS_FILE = 'data/raw/gdocs-miss.json';
-const UA = 'wooble-fan-archive/0.1 (personal WoG search project)';
+const UA = 'fan-archive/0.1';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 let MISS = new Set();

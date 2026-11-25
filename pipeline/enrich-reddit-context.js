@@ -9,7 +9,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 
 const API_C = 'https://api.pullpush.io/reddit/search/comment/';
 const API_S = 'https://api.pullpush.io/reddit/search/submission/';
-const UA = { 'User-Agent': 'wooble-fan-archive/0.1 (personal WoG search project)' };
+const UA = { 'User-Agent': 'fan-archive/0.1' };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function fetchJson(url) {

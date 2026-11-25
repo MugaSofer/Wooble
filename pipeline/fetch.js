@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
-const UA = 'WoobleBot/0.1 (personal fan search tool; contact mugasofer@gmail.com)';
+const UA = 'fan-archive/0.1';
 // Some self-hosted sites (parahumans.net) block non-browser UAs on every route
 // with a 403, including the public chapter pages humans read. For those we fall
 // back to a browser UA — still rate-limited and cached, just to read public HTML.

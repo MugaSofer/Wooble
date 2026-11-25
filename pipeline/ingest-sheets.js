@@ -13,7 +13,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { inflateRawSync } from 'node:zlib';
 
-const UA = 'wooble-fan-archive/0.1 (personal WoG search project)';
+const UA = 'fan-archive/0.1';
 const words = (s) => String(s || '').trim().split(/\s+/).filter(Boolean).length;
 // Each sheet's Drive creation date (from data/gdocs-dates.json), so cape/vial
 // records aren't undated.

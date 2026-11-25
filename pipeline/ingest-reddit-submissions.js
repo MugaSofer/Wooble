@@ -14,7 +14,7 @@ import { join } from 'node:path';
 
 const AUTHOR = 'Wildbow';
 const API = 'https://api.pullpush.io/reddit/search/submission/';
-const UA = 'wooble-fan-archive/0.1 (personal WoG search project)';
+const UA = 'fan-archive/0.1';
 const RECORDS_OUT = 'data/corpus/wog-reddit-posts.json';
 const BATCH_DIR = 'data/wog-batches';
 const MIN_CHARS = 200; // a substantive self-post vs a bare link/announcement

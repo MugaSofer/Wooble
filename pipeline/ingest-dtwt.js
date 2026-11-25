@@ -20,7 +20,7 @@ async function allComments() {
   let page = 0;
   for (; page < MAX_PAGES; page++) {
     const url = `${API}?author=${AUTHOR}&subreddit=${SUB}&size=100&sort=desc${before ? `&before=${before}` : ''}`;
-    const r = await fetch(url, { headers: { 'User-Agent': 'wooble-fan-archive/0.1' } });
+    const r = await fetch(url, { headers: { 'User-Agent': 'fan-archive/0.1' } });
     if (!r.ok) throw new Error('PullPush HTTP ' + r.status);
     const items = (await r.json()).data || [];
     out.push(...items);

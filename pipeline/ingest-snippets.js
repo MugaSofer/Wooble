@@ -7,7 +7,7 @@ import { parse } from 'node-html-parser';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { cleanContent } from './clean.js';
 
-const UA = 'wooble-fan-archive/0.1 (personal WoG search project)';
+const UA = 'fan-archive/0.1';
 const CAT = 'https://wildbow.wordpress.com/category/posts/snippets-samples/';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const words = (s) => String(s || '').trim().split(/\s+/).filter(Boolean).length;

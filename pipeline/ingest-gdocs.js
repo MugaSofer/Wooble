@@ -17,7 +17,7 @@ import { htmlToText } from './clean.js';
 const SEEDS = process.argv.slice(2);
 const MAX_DOCS = Number(process.env.MAX_DOCS) || 80;
 const RAW_DIR = 'data/raw/gdocs';
-const UA = 'wooble-fan-archive/0.1 (personal WoG search project)';
+const UA = 'fan-archive/0.1';
 // IDs we never fetch (fan alt-systems, campaign indexes, primers).
 const BLOCK = new Set((process.env.BLOCK || '').split(',').map((s) => s.trim()).filter(Boolean));
 // IDs we fetch for text but don't crawl outward from (WB-run campaigns, the

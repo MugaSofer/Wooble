@@ -13,7 +13,7 @@ const AUTHOR = 'Wildbow';
 const API = 'https://api.pullpush.io/reddit/search/comment/';
 const SUBS = (process.argv[2] || 'Parahumans,Weaverdice,whowouldwin,WormFanfic').split(',').map((s) => s.trim());
 const PAGE = 100;
-const UA = 'wooble-fan-archive/0.1 (personal WoG search project)';
+const UA = 'fan-archive/0.1';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const words = (s) => String(s || '').trim().split(/\s+/).filter(Boolean).length;
